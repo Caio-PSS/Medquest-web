@@ -46,7 +46,7 @@ const Session = () => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(
-          `https://medquest-floral-log-224.fly.dev//api/questions/categories-subtopics`,
+          `https://medquest-floral-log-224.fly.dev/api/questions/categories-subtopics`,
           {
             headers: { 
               Authorization: `Bearer ${authToken}`
@@ -121,7 +121,7 @@ const Session = () => {
       });
 
       const res = await fetch(
-        `https://medquest-floral-log-224.fly.dev//api/questions?${params}`,
+        `https://medquest-floral-log-224.fly.dev/api/questions?${params}`,
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
 
@@ -144,7 +144,7 @@ const Session = () => {
     const currentQ = questions[currentQuestion];
     
     try {
-      await fetch(`https://medquest-floral-log-224.fly.dev//api/respostas`, {
+      await fetch(`https://medquest-floral-log-224.fly.dev/api/respostas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
