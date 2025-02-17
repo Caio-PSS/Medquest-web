@@ -31,7 +31,7 @@ export default function Question({ data, onConfirm, onNext }: QuestionProps) {
     ? {
         width: '100%',
         zoomPosition: 'original',
-        img: `${process.env.REACT_APP_API_URL}${data.image_url}.png`,
+        img: `https://medquest-floral-log-224.fly.dev/${data.image_url}.png`,
       }
     : null;
 

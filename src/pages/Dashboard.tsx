@@ -25,7 +25,7 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchStats = async () => {
           try {
-            const res = await fetch(`${process.env.REACT_APP_API_URL}/api/stats/overview`, {
+            const res = await fetch(`https://medquest-floral-log-224.fly.dev//api/stats/overview`, {
               headers: { Authorization: `Bearer ${authToken}` }
             });
             const data = await res.json();

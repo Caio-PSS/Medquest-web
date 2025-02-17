@@ -56,13 +56,13 @@ const Stats = () => {
       });
 
       const [overviewRes, categoryRes, timelineRes] = await Promise.all([
-        fetch(`${process.env.REACT_APP_API_URL}/api/stats/overview?${params}`, {
+        fetch(`https://medquest-floral-log-224.fly.dev//api/stats/overview?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` }
         }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/stats/categories?${params}`, {
+        fetch(`https://medquest-floral-log-224.fly.dev//api/stats/categories?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` }
         }),
-        fetch(`${process.env.REACT_APP_API_URL}/api/stats/timeline?${params}`, {
+        fetch(`https://medquest-floral-log-224.fly.dev//api/stats/timeline?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` }
         })
       ]);
