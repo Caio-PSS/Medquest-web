@@ -4,7 +4,7 @@ import { BarChart, LineChart, PieChart } from '../components/Charts';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-type TimeRange = 'day' | 'week' | 'month' | 'year' | 'custom';
+type TimeRange = 'day' | 'week' | 'month' | 'semestre' | 'year' | 'custom';
 
 interface StatsFilters {
   range: TimeRange;
@@ -18,6 +18,7 @@ interface OverviewStats {
   total_erros: number;
   percentual_acertos: string;
   tempo_medio_resposta: string;
+  // Outros dados relevantes podem ser adicionados aqui
 }
 
 interface CategoryProgress {
@@ -30,26 +31,46 @@ interface CategoryProgress {
 interface TimelineData {
   date: string;
   correct: number;
-  incorrect: number;
+  // Poderíamos incluir outros dados, se necessário
+}
+
+interface SubareaProgress {
+  subarea: string;
+  total_respondidas: number;
+  total_corretas: number;
+  percentual_acerto: string;
 }
 
 const Stats = () => {
   const { authToken } = useAuth();
   const [overviewData, setOverviewData] = useState<OverviewStats | null>(null);
   const [categoryData, setCategoryData] = useState<CategoryProgress[]>([]);
+  const [subareaData, setSubareaData] = useState<SubareaProgress[]>([]);
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const [startDate, setStartDate] = useState<Date>(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    return date;
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
   });
   const [endDate, setEndDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'subareas' | 'timeline'>('overview');
 
-  // Estados para loading e erros
+  // Estados para loading e erro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Função para calcular média móvel (janela de 3 pontos)
+  const calculateMovingAverage = (data: number[], windowSize: number): number[] => {
+    const averages: number[] = [];
+    for (let i = 0; i < data.length; i++) {
+      const start = Math.max(0, i - windowSize + 1);
+      const window = data.slice(start, i + 1);
+      const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
+      averages.push(parseFloat(avg.toFixed(2)));
+    }
+    return averages;
+  };
 
   const fetchData = useCallback(async (filters: StatsFilters) => {
     try {
@@ -60,12 +81,16 @@ const Stats = () => {
         ...(filters.startDate && { start: filters.startDate.toISOString() }),
         ...(filters.endDate && { end: filters.endDate.toISOString() }),
       });
-
-      const [overviewRes, categoryRes, timelineRes] = await Promise.all([
+      
+      // Buscando dados de overview, categorias, subáreas e timeline em paralelo
+      const [overviewRes, categoryRes, subareaRes, timelineRes] = await Promise.all([
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/overview?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         }),
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/categories?${params}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }),
+        fetch(`https://medquest-floral-log-224.fly.dev/api/stats/subareas?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         }),
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/timeline?${params}`, {
@@ -73,16 +98,18 @@ const Stats = () => {
         }),
       ]);
 
-      if (!overviewRes.ok || !categoryRes.ok || !timelineRes.ok) {
+      if (!overviewRes.ok || !categoryRes.ok || !subareaRes.ok || !timelineRes.ok) {
         throw new Error('Erro ao buscar dados. Verifique sua conexão ou tente novamente.');
       }
 
       const overview = await overviewRes.json();
       const categories = await categoryRes.json();
+      const subareas = await subareaRes.json();
       const timeline = await timelineRes.json();
 
       setOverviewData(overview);
       setCategoryData(categories);
+      setSubareaData(subareas);
       setTimelineData(timeline);
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -101,7 +128,27 @@ const Stats = () => {
     fetchData(filters);
   }, [authToken, timeRange, startDate, endDate, fetchData]);
 
-  // Função para gerar e baixar o relatório em CSV
+  // Cálculo dos dados para a linha do tempo: acertos e média móvel (tendência)
+  const acertosData = timelineData.map(d => d.correct);
+  const trendData = calculateMovingAverage(acertosData, 3);
+
+  // Cálculo dos melhores e piores desempenhos por subárea
+  let bestSubarea: SubareaProgress | null = null;
+  let worstSubarea: SubareaProgress | null = null;
+  if (subareaData && subareaData.length > 0) {
+    bestSubarea = subareaData.reduce((prev, curr) => {
+      const prevPct = parseFloat(prev.percentual_acerto.replace('%', ''));
+      const currPct = parseFloat(curr.percentual_acerto.replace('%', ''));
+      return currPct > prevPct ? curr : prev;
+    });
+    worstSubarea = subareaData.reduce((prev, curr) => {
+      const prevPct = parseFloat(prev.percentual_acerto.replace('%', ''));
+      const currPct = parseFloat(curr.percentual_acerto.replace('%', ''));
+      return currPct < prevPct ? curr : prev;
+    });
+  }
+
+  // Função para gerar e baixar relatório em CSV
   const downloadReport = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += 'Overview Stats\n';
@@ -114,10 +161,15 @@ const Stats = () => {
     categoryData.forEach((cat) => {
       csvContent += `${cat.categoria},${cat.total_respondidas},${cat.total_corretas},${cat.percentual_acerto}\n`;
     });
+    csvContent += '\nSubareas\n';
+    csvContent += 'Subárea,Total Respondidas,Total Corretas,Percentual Acerto\n';
+    subareaData.forEach((sub) => {
+      csvContent += `${sub.subarea},${sub.total_respondidas},${sub.total_corretas},${sub.percentual_acerto}\n`;
+    });
     csvContent += '\nTimeline\n';
-    csvContent += 'Data,Acertos,Erros\n';
+    csvContent += 'Data,Acertos\n';
     timelineData.forEach((item) => {
-      csvContent += `${item.date},${item.correct},${item.incorrect}\n`;
+      csvContent += `${item.date},${item.correct}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -128,7 +180,7 @@ const Stats = () => {
     document.body.removeChild(link);
   };
 
-  // Componente para exibir os cards de estatísticas
+  // Componente para exibir cartões de estatísticas
   const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: string }) => (
     <div className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
       <div className="flex items-center gap-2">
@@ -143,7 +195,7 @@ const Stats = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Cabeçalho com título e botão para baixar relatório */}
+      {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold">Estatísticas Detalhadas</h1>
         <button 
@@ -155,11 +207,11 @@ const Stats = () => {
         </button>
       </div>
 
-      {/* Filtros de período */}
+      {/* Filtros de Período */}
       <div className="flex flex-col md:flex-row justify-between mb-8 gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex gap-2 flex-wrap">
-            {(['day', 'week', 'month', 'year', 'custom'] as TimeRange[]).map((range) => (
+            {(['day', 'week', 'month', 'semestre', 'year', 'custom'] as TimeRange[]).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
@@ -174,6 +226,7 @@ const Stats = () => {
                   day: 'Diário',
                   week: 'Semanal',
                   month: 'Mensal',
+                  semestre: 'Semestral',
                   year: 'Anual',
                   custom: 'Personalizado',
                 }[range]}
@@ -206,7 +259,7 @@ const Stats = () => {
         </div>
       </div>
 
-      {/* Mensagem de erro (se houver) */}
+      {/* Exibição de erros */}
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
@@ -219,16 +272,16 @@ const Stats = () => {
         </div>
       )}
 
-      {/* Spinner de loading */}
+      {/* Loading */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" aria-label="Carregando..."></div>
         </div>
       ) : (
         <>
-          {/* Abas para selecionar a visualização dos dados */}
+          {/* Abas */}
           <div className="tabs mb-8 border-b">
-            {(['overview', 'categories', 'timeline'] as const).map((tab) => (
+            {(['overview', 'categories', 'subareas', 'timeline'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -242,60 +295,79 @@ const Stats = () => {
                 {{
                   overview: 'Visão Geral',
                   categories: 'Por Categoria',
+                  subareas: 'Por Subárea',
                   timeline: 'Linha do Tempo',
                 }[tab]}
               </button>
             ))}
           </div>
 
-          {/* Visualização "Visão Geral" */}
+          {/* Conteúdo das abas */}
           {activeTab === 'overview' && overviewData && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-white p-6 rounded-xl shadow h-96">
-                <PieChart
-                  data={{
-                    labels: ['Acertos', 'Erros'],
-                    datasets: [{
-                      data: [overviewData.total_acertos, overviewData.total_erros],
-                      backgroundColor: ['#4CAF50', '#F44336'],
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: { position: 'bottom' }
-                    }
-                  }}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <StatCard
-                  title="Total de Questões"
-                  value={overviewData.total_questoes_respondidas}
-                  icon="📚"
-                />
-                <StatCard
-                  title="Taxa de Acerto"
-                  value={overviewData.percentual_acertos}
-                  icon="🎯"
-                />
-                <StatCard
-                  title="Tempo Médio"
-                  value={`${overviewData.tempo_medio_resposta}s`}
-                  icon="⏱️"
-                />
-                {categoryData[0] && (
-                  <StatCard
-                    title="Melhor Categoria"
-                    value={categoryData[0].categoria}
-                    icon="🏆"
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="bg-white p-6 rounded-xl shadow h-96">
+                  <PieChart
+                    data={{
+                      labels: ['Acertos', 'Erros'],
+                      datasets: [{
+                        data: [overviewData.total_acertos, overviewData.total_erros],
+                        backgroundColor: ['#4CAF50', '#F44336'],
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: { legend: { position: 'bottom' } }
+                    }}
                   />
-                )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <StatCard
+                    title="Total de Questões"
+                    value={overviewData.total_questoes_respondidas}
+                    icon="📚"
+                  />
+                  <StatCard
+                    title="Taxa de Acerto"
+                    value={overviewData.percentual_acertos}
+                    icon="🎯"
+                  />
+                  <StatCard
+                    title="Tempo Médio"
+                    value={`${overviewData.tempo_medio_resposta}s`}
+                    icon="⏱️"
+                  />
+                  {categoryData[0] && (
+                    <StatCard
+                      title="Melhor Categoria"
+                      value={categoryData[0].categoria}
+                      icon="🏆"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
+              {/* Cartões extras para análise por subárea */}
+              {subareaData.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                  {bestSubarea && (
+                    <StatCard
+                      title="Melhor Subárea"
+                      value={`${bestSubarea.subarea} (${bestSubarea.percentual_acerto})`}
+                      icon="🚀"
+                    />
+                  )}
+                  {worstSubarea && (
+                    <StatCard
+                      title="Pior Subárea"
+                      value={`${worstSubarea.subarea} (${worstSubarea.percentual_acerto})`}
+                      icon="⚠️"
+                    />
+                  )}
+                </div>
+              )}
+            </>
           )}
 
-          {/* Visualização "Por Categoria" */}
           {activeTab === 'categories' && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
               <BarChart
@@ -315,37 +387,70 @@ const Stats = () => {
             </div>
           )}
 
-          {/* Visualização "Linha do Tempo" */}
+          {activeTab === 'subareas' && (
+            <div className="bg-white p-6 rounded-xl shadow h-96">
+              <BarChart
+                data={{
+                  labels: subareaData.map(d => d.subarea),
+                  datasets: [
+                    {
+                      label: 'Acertos',
+                      data: subareaData.map(d => d.total_corretas),
+                      backgroundColor: '#4CAF50',
+                    },
+                    {
+                      label: 'Erros',
+                      data: subareaData.map(d => d.total_respondidas - d.total_corretas),
+                      backgroundColor: '#F44336',
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  scales: { y: { beginAtZero: true } }
+                }}
+              />
+            </div>
+          )}
+
           {activeTab === 'timeline' && timelineData.length > 0 && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
               <LineChart
                 data={{
-                  labels: timelineData.map(d => d.date),
-                  datasets: [{
-                    label: 'Acertos',
-                    data: timelineData.map(d => d.correct),
-                    borderColor: '#4CAF50',
-                    tension: 0.1,
-                    fill: false,
-                  }, {
-                    label: 'Erros',
-                    data: timelineData.map(d => d.incorrect),
-                    borderColor: '#F44336',
-                    tension: 0.1,
-                    fill: false,
-                  }]
+                    labels: timelineData.map(d => d.date),
+                    datasets: [
+                    {
+                        label: 'Acertos',
+                        data: acertosData,
+                        borderColor: '#4CAF50',
+                        tension: 0.1,
+                        fill: false,
+                    },
+                    {
+                        label: 'Tendência',
+                        data: trendData,
+                        borderColor: '#3B82F6',
+                        borderDash: [5, 5],
+                        tension: 0.1,
+                        fill: false,
+                    }
+                    ]
                 }}
                 options={{
-                  responsive: true,
-                  scales: {
+                    responsive: true,
+                    scales: {
                     x: {
-                      type: 'time',
-                      time: { unit: timeRange === 'custom' ? 'day' : timeRange },
-                      title: { display: true, text: 'Data' },
+                        type: 'time',
+                        time: { 
+                        unit: timeRange === 'custom' 
+                                ? 'day' 
+                                : (timeRange === 'semestre' ? 'month' : timeRange)
+                        },
+                        title: { display: true, text: 'Data' },
                     },
                     y: {
-                      beginAtZero: true,
-                      title: { display: true, text: 'Quantidade' },
+                        beginAtZero: true,
+                        title: { display: true, text: 'Acertos' },
                     },
                   },
                 }}
