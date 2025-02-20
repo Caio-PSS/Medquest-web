@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, X, AlertTriangle, Lightbulb } from 'lucide-react';
 
 interface QuestionType {
@@ -19,13 +19,44 @@ interface QuestionProps {
   data: QuestionType;
   onConfirm: (answer: string, isCorrect: boolean) => void;
   onNext: () => void;
+  // Opcionalmente, os tempos de início podem ser passados pelo componente pai:
+  sessionStartTime?: number;
+  questionStartTime?: number;
 }
 
-export default function Question({ data, onConfirm, onNext }: QuestionProps) {
+export default function Question({
+  data,
+  onConfirm,
+  onNext,
+  sessionStartTime,
+  questionStartTime,
+}: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+
+  // Estados para os timers (em segundos)
+  const [questionTimer, setQuestionTimer] = useState(0);
+  const [sessionTimer, setSessionTimer] = useState(0);
+
+  // Helper para formatar o tempo em "Xm Ys"
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+  };
+
+  // Inicia os timers: se os tempos de início não forem passados via props, usa Date.now()
+  useEffect(() => {
+    const qStart = questionStartTime || Date.now();
+    const sStart = sessionStartTime || Date.now();
+    const interval = setInterval(() => {
+      setQuestionTimer(Math.floor((Date.now() - qStart) / 1000));
+      setSessionTimer(Math.floor((Date.now() - sStart) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [questionStartTime, sessionStartTime]);
 
   const imageProps = data.image_url
     ? {
@@ -43,7 +74,6 @@ export default function Question({ data, onConfirm, onNext }: QuestionProps) {
       console.error('Resposta não encontrada');
       return;
     }
-    
     setShowFeedback(true);
     const isCorrect = selected.toUpperCase() === data.resposta.toUpperCase();
     setIsCorrectAnswer(isCorrect);
@@ -58,9 +88,20 @@ export default function Question({ data, onConfirm, onNext }: QuestionProps) {
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
-      <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
-        <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+      <h2 className="text-2xl font-bold mb-2 text-white flex items-center gap-2">
+        <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+          Questão {data.id}
+        </span>
       </h2>
+      {/* Mostradores de Tempo */}
+      <div className="flex justify-between text-sm text-gray-300 mb-4">
+        <div>
+          <span className="font-medium">Sessão:</span> {formatTime(sessionTimer)}
+        </div>
+        <div>
+          <span className="font-medium">Questão:</span> {formatTime(questionTimer)}
+        </div>
+      </div>
 
       {imageProps && (
         <div className="mb-8 flex justify-center">
@@ -91,7 +132,12 @@ export default function Question({ data, onConfirm, onNext }: QuestionProps) {
             <img
               src={imageProps?.img}
               alt="Imagem da questão ampliada"
-              style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block', margin: '0 auto' }}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '90vh',
+                display: 'block',
+                margin: '0 auto',
+              }}
             />
           </div>
         </div>
