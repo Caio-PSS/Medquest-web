@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
 
 interface DecodedToken {
   exp: number;
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [inactivityTimeoutId, setInactivityTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   const decodeToken = useCallback((token: string): AuthUser | null => {
     try {
@@ -69,7 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAuthToken(null);
     setAuthUser(null);
     if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-  }, [inactivityTimeoutId]);
+    navigate('/login'); // Redireciona para o login
+  }, [inactivityTimeoutId, navigate]);
 
   const checkTokenExpiration = useCallback(() => {
     const token = localStorage.getItem('medquest_token');
