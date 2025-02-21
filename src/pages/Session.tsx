@@ -150,6 +150,7 @@ const Session = () => {
       
       const data = await res.json();
       setQuestions(data);
+      
       // Reinicia ambos os timers e as estatísticas da sessão ao iniciar
       setQuestionStartTime(Date.now());
       setSessionStartTime(Date.now());
