@@ -25,7 +25,7 @@ const SessionStats = () => {
   const generateCommentary = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/generateCommentary', {
+      const response = await fetch('/api/commentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

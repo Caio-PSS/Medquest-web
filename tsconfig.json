@@ -27,6 +27,6 @@
     "src",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "api"  ],
   "exclude": ["node_modules"]
 }
