@@ -17,7 +17,7 @@ type AuthContextType = {
   authToken: string | null;
   authUser: AuthUser | null;
   login: (token: string) => void;
-  logout: () => void;
+  logout: (redirect?: () => void) => void; // Modified logout function signature
   resetInactivityTimeout: () => void;
   isLoading: boolean;
 };
@@ -65,14 +65,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, [decodeToken]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback((redirect?: () => void) => { // Modified logout function implementation
     localStorage.removeItem('medquest_token');
     localStorage.removeItem('inactivity_expiry');
     setAuthToken(null);
     setAuthUser(null);
     if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-    navigate('/login'); // Redireciona para o login
-  }, [inactivityTimeoutId, navigate]);
+
+    if (redirect) {
+      redirect(); // Executa o redirecionamento, se for passado
+    } else {
+      navigate('/login'); // Default redirect if no callback is provided
+    }
+  }, [inactivityTimeoutId, navigate]); // Added navigate to dependencies
+
 
   const checkTokenExpiration = useCallback(() => {
     const token = localStorage.getItem('medquest_token');
@@ -99,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleActivity = () => resetInactivityTimeout();
-    
+
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('touchstart', handleActivity);
