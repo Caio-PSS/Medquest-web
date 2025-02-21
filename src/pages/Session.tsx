@@ -96,7 +96,6 @@ const Session = () => {
 
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
-      // Ao finalizar todas as questões, redireciona para o painel de estatísticas da sessão
       navigate('/session-stats', { state: sessionStats });
     }
   }, [currentQuestion, questions.length, navigate, sessionStats]);
@@ -205,14 +204,10 @@ const Session = () => {
   };
 
   // Ao avançar para a próxima questão, reinicia o timer da questão
-  const handleNextQuestion = () => {
-    if (currentQuestion + 1 < questions.length) {
+    const handleNextQuestion = () => {
       setCurrentQuestion(prev => prev + 1);
       setQuestionStartTime(Date.now());
-    } else {
-      // Se chegou ao fim, o useEffect acima cuidará de redirecionar para o painel de estatísticas
-    }
-  };
+    };
 
   // Cálculo dos tempos (em segundos)
   const questionElapsed = Math.floor((Date.now() - questionStartTime) / 1000);
