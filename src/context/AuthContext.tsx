@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react'; // Import useRef
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 
@@ -38,7 +38,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [inactivityTimeoutId, setInactivityTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+
+  const navigateRef = useRef<ReturnType<typeof useNavigate> | null>(null); // Create a ref for useNavigate
+
+  useEffect(() => {
+    navigateRef.current = useNavigate(); // Initialize useNavigate in useEffect
+  }, []);
+
+  // Create a wrapper function to use navigate through the ref
+  const navigate = useCallback((path: string) => {
+    if (!navigateRef.current) {
+      console.error("navigateRef.current is not initialized yet!");
+      return;
+    }
+    navigateRef.current(path);
+  }, []);
+
 
   const decodeToken = useCallback((token: string): AuthUser | null => {
     try {
@@ -75,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (redirect) {
       redirect(); // Executa o redirecionamento, se for passado
     } else {
-      navigate('/login'); // Default redirect if no callback is provided
+      navigate('/login'); // Use the wrapped navigate function
     }
   }, [inactivityTimeoutId, navigate]); // Added navigate to dependencies
 
