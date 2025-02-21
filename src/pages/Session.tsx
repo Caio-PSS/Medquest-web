@@ -46,6 +46,14 @@ const Session = () => {
   const [includeRepeats, setIncludeRepeats] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
+  
+  // Estado para armazenar estatísticas da sessão
+  const [sessionStats, setSessionStats] = useState({
+    totalQuestions: 0,
+    correct: 0,
+    incorrect: 0,
+    totalTime: 0,
+  });
 
   // Atualiza o tick a cada 1 segundo para atualizar os timers na tela
   useEffect(() => {
@@ -88,9 +96,10 @@ const Session = () => {
 
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
-      navigate('/stats');
+      // Ao finalizar todas as questões, redireciona para o painel de estatísticas da sessão
+      navigate('/session-stats', { state: sessionStats });
     }
-  }, [currentQuestion, questions.length, navigate]);
+  }, [currentQuestion, questions.length, navigate, sessionStats]);
 
   const handleSubtopicSelect = (category: string, subtopic: string) => {
     setSelections(prev => {
@@ -141,10 +150,16 @@ const Session = () => {
       
       const data = await res.json();
       setQuestions(data);
-      // Reinicia ambos os timers ao iniciar a sessão
+      // Reinicia ambos os timers e as estatísticas da sessão ao iniciar
       setQuestionStartTime(Date.now());
       setSessionStartTime(Date.now());
       setCurrentQuestion(0);
+      setSessionStats({
+        totalQuestions: data.length,
+        correct: 0,
+        incorrect: 0,
+        totalTime: 0,
+      });
     } catch (err) {
       console.error(err);
       alert('Erro ao carregar questões');
@@ -174,6 +189,14 @@ const Session = () => {
         })
       });
   
+      // Atualiza as estatísticas da sessão
+      setSessionStats(prev => ({
+        ...prev,
+        correct: prev.correct + (isCorrect ? 1 : 0),
+        incorrect: prev.incorrect + (isCorrect ? 0 : 1),
+        totalTime: prev.totalTime + timeTaken,
+      }));
+  
     } catch (err) {
       console.error('Erro ao salvar resposta:', err);
       alert('Erro ao salvar resposta');
@@ -186,7 +209,7 @@ const Session = () => {
       setCurrentQuestion(prev => prev + 1);
       setQuestionStartTime(Date.now());
     } else {
-      navigate('/stats');
+      // Se chegou ao fim, o useEffect acima cuidará de redirecionar para o painel de estatísticas
     }
   };
 
