@@ -5,7 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Session from './pages/Session';
 import Stats from './pages/Stats';
-import SessionStats from './pages/SessionStats';
+import Feedback from './pages/Feedback';
 import Register from './components/Register';
 import AuthCheck from './components/AuthCheck';
 import { Analytics } from '@vercel/analytics/react'; // Import Analytics
@@ -21,7 +21,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/session" element={<Session />} />
-            <Route path="/session-stats" element={<SessionStats />} />
+            <Route path="/feedback" element={<Feedback />} />
             <Route path="/stats" element={<Stats />} />
           </Route>
         </Routes>

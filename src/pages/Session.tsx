@@ -96,7 +96,7 @@ const Session = () => {
 
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
-      navigate('/session-stats', { state: SessionStats })
+      navigate('/feedback', { state: SessionStats })
     }
   }, [currentQuestion, questions.length, navigate, SessionStats]);
 
