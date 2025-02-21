@@ -96,7 +96,7 @@ const Session = () => {
 
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
-      navigate('/feedback', { state: SessionStats })
+      navigate('/session-stats', { state: SessionStats });
     }
   }, [currentQuestion, questions.length, navigate, SessionStats]);
 
@@ -349,20 +349,17 @@ const Session = () => {
 
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Bars
-                height="50"
-                width="50"
-                color="#3b82f6"
-                ariaLabel="loading"
-              />
+              <Bars height="50" width="50" color="#3b82f6" ariaLabel="loading" />
             </div>
           ) : (
-            <Question 
-              key={currentQuestion}
-              data={questions[currentQuestion]} 
-              onConfirm={handleAnswer}
-              onNext={handleNextQuestion}
-            />
+            questions[currentQuestion] && ( // ⬅️ Verificação crítica
+              <Question 
+                key={currentQuestion}
+                data={questions[currentQuestion]} 
+                onConfirm={handleAnswer}
+                onNext={handleNextQuestion}
+              />
+            )
           )}
         </div>
       )}
