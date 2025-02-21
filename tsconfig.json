@@ -14,9 +14,19 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "jsx": "preserve",  // Changed from "react-jsx" to "preserve" for Next.js
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "incremental": true,  // Added for Next.js build optimization
+    "baseUrl": ".",      // Added for absolute imports
+    "paths": {          // Added for absolute imports
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["next-env.d.ts", "src", "**/*.ts", "**/*.tsx"],
+  "include": [
+    "next-env.d.ts",
+    "src",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
   "exclude": ["node_modules"]
 }
