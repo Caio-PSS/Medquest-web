@@ -458,7 +458,7 @@ const Stats = () => {
           )}
 
           {activeTab === 'categories' && (
-            <div className="bg-white p-6 rounded-xl shadow">
+            <div className="bg-white p-6 rounded-xl shadow h-96">
               {!selectedCategory ? (
                 <>
                   <BarChart
