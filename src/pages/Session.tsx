@@ -48,7 +48,7 @@ const Session = () => {
   const [selections, setSelections] = useState<Selection[]>([]);
   
   // Estado para armazenar estatísticas da sessão
-  const [sessionStats, setSessionStats] = useState({
+  const [SessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
     incorrect: 0,
@@ -94,11 +94,11 @@ const Session = () => {
     if (authToken) fetchCategories();
   }, [authToken]);
 
-useEffect(() => {
-  if (questions.length > 0 && currentQuestion >= questions.length) {
-    navigate('/session-stats', { state: sessionStats });
-  }
-}, [currentQuestion, questions.length, navigate, sessionStats]);
+  useEffect(() => {
+    if (questions.length > 0 && currentQuestion >= questions.length) {
+      navigate('/session-stats', { state: SessionStats })
+    }
+  }, [currentQuestion, questions.length, navigate, SessionStats]);
 
   const handleSubtopicSelect = (category: string, subtopic: string) => {
     setSelections(prev => {

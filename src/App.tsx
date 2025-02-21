@@ -21,8 +21,8 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/session" element={<Session />} />
-            <Route path="/stats" element={<Stats />} />
             <Route path="/session-stats" element={<SessionStats />} />
+            <Route path="/stats" element={<Stats />} />
           </Route>
         </Routes>
       </AuthProvider>
