@@ -12,25 +12,22 @@ import { Analytics } from '@vercel/analytics/react'; // Import Analytics
 
 function App() {
   return (
-    <div>
+    <BrowserRouter>
       <AuthProvider>
-        <BrowserRouter>
-          <AuthCheck /> {/* Move inside BrowserRouter */}
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/session" element={<Session />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route path="/session-stats" element={<SessionStats />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AuthCheck />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/session" element={<Session />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="/session-stats" element={<SessionStats />} />
+          </Route>
+        </Routes>
       </AuthProvider>
       <Analytics />
-    </div>
+    </BrowserRouter>
   );
 }
 

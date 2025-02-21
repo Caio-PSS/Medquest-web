@@ -4,10 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const ProtectedRoute = () => {
   const { authToken, isLoading } = useAuth();
 
-  if (isLoading) {
-    return <div>Carregando...</div>; // Or a more appropriate loading state
-  }
-
+  if (isLoading) return <div>Carregando...</div>;
   return authToken ? <Outlet /> : <Navigate to="/login" replace />;
 };
 

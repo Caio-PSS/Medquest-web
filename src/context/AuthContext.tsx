@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react'; // Import useRef
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { useNavigate } from 'react-router-dom';
 
 interface DecodedToken {
   exp: number;
@@ -17,7 +16,7 @@ type AuthContextType = {
   authToken: string | null;
   authUser: AuthUser | null;
   login: (token: string) => void;
-  logout: (redirect?: () => void) => void; // Modified logout function signature
+  logout: () => void;
   resetInactivityTimeout: () => void;
   isLoading: boolean;
 };
@@ -31,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true
 });
 
-const INACTIVITY_TIMEOUT = 6 * 60 * 60 * 1000; // 6 horas
+const INACTIVITY_TIMEOUT = 6 * 60 * 60 * 1000; // 6 hours
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -39,31 +38,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [inactivityTimeoutId, setInactivityTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const navigateRef = useRef<ReturnType<typeof useNavigate> | null>(null); // Create a ref for useNavigate
-
-  useEffect(() => {
-    navigateRef.current = useNavigate(); // Initialize useNavigate in useEffect
-  }, []);
-
-  // Create a wrapper function to use navigate through the ref
-  const navigate = useCallback((path: string) => {
-    if (!navigateRef.current) {
-      console.error("navigateRef.current is not initialized yet!");
-      return;
-    }
-    navigateRef.current(path);
-  }, []);
-
-
   const decodeToken = useCallback((token: string): AuthUser | null => {
     try {
       const decoded: DecodedToken = jwtDecode(token);
-      return {
-        id: decoded.id,
-        email: decoded.email
-      };
+      return { id: decoded.id, email: decoded.email };
     } catch (error) {
-      console.error("Token inválido:", error);
+      console.error("Invalid token:", error);
       return null;
     }
   }, []);
@@ -80,20 +60,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, [decodeToken]);
 
-  const logout = useCallback((redirect?: () => void) => { // Modified logout function implementation
+  const logout = useCallback(() => {
     localStorage.removeItem('medquest_token');
     localStorage.removeItem('inactivity_expiry');
     setAuthToken(null);
     setAuthUser(null);
     if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-
-    if (redirect) {
-      redirect(); // Executa o redirecionamento, se for passado
-    } else {
-      navigate('/login'); // Use the wrapped navigate function
-    }
-  }, [inactivityTimeoutId, navigate]); // Added navigate to dependencies
-
+  }, [inactivityTimeoutId]);
 
   const checkTokenExpiration = useCallback(() => {
     const token = localStorage.getItem('medquest_token');
@@ -120,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleActivity = () => resetInactivityTimeout();
-
+    
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('touchstart', handleActivity);
@@ -143,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [decodeToken, resetInactivityTimeout]);
 
   useEffect(() => {
-    const checkAuthState = setInterval(checkTokenExpiration, 60000); // Verificar a cada minuto
+    const checkAuthState = setInterval(checkTokenExpiration, 60000);
     return () => clearInterval(checkAuthState);
   }, [checkTokenExpiration]);
 
