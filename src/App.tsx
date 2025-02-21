@@ -12,14 +12,14 @@ import { Analytics } from '@vercel/analytics/react'; // Import Analytics
 
 function App() {
   return (
-    <div> {/* Add a wrapping div for Analytics component */}
+    <div>
       <AuthProvider>
-        <AuthCheck /> {/* Include AuthCheck here */}
         <BrowserRouter>
+          <AuthCheck /> {/* Move inside BrowserRouter */}
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-
+            
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/session" element={<Session />} />
@@ -29,7 +29,7 @@ function App() {
           </Routes>
         </BrowserRouter>
       </AuthProvider>
-      <Analytics /> {/* Include Analytics component here */}
+      <Analytics />
     </div>
   );
 }
