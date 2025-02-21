@@ -262,20 +262,6 @@ const Stats = () => {
         </div>
       </div>
 
-      {/* Painel de Número de Questões Realizadas */}
-      {overviewData && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold">Questões Realizadas</h2>
-          <div className="mt-4">
-            <StatCard
-              title="Total de Questões"
-              value={overviewData.total_questoes_respondidas}
-              icon="📚"
-            />
-          </div>
-        </div>
-      )}
-
       {/* Exibição de Erros */}
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
