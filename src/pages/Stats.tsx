@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { BarChart, LineChart, PieChart } from '../components/Charts';
+import { BarChart, LineChart, PieChart, ScatterChart } from '../components/Charts';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -18,7 +18,6 @@ interface OverviewStats {
   total_erros: number;
   percentual_acertos: string;
   tempo_medio_resposta: string;
-  // Outros dados relevantes podem ser adicionados aqui
 }
 
 interface CategoryProgress {
@@ -31,10 +30,12 @@ interface CategoryProgress {
 interface TimelineData {
   date: string;
   correct: number;
-  // Poderíamos incluir outros dados, se necessário
+  incorrect: number;
+  avg_time: number;
 }
 
 interface SubareaProgress {
+  categoria: string;
   subarea: string;
   total_respondidas: number;
   total_corretas: number;
@@ -54,9 +55,9 @@ const Stats = () => {
     return d;
   });
   const [endDate, setEndDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'subareas' | 'timeline'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'timeVsAccuracy' | 'categories' | 'subareas'>('overview');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Estados para loading e erro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,7 +83,7 @@ const Stats = () => {
         ...(filters.endDate && { end: filters.endDate.toISOString() }),
       });
       
-      // Buscando dados de overview, categorias, subáreas e timeline em paralelo
+      // Buscando overview, categorias, subáreas e timeline em paralelo
       const [overviewRes, categoryRes, subareaRes, timelineRes] = await Promise.all([
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/overview?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` },
@@ -128,11 +129,13 @@ const Stats = () => {
     fetchData(filters);
   }, [authToken, timeRange, startDate, endDate, fetchData]);
 
-  // Cálculo dos dados para a linha do tempo: acertos e média móvel (tendência)
-  const acertosData = timelineData.map(d => d.correct);
-  const trendData = calculateMovingAverage(acertosData, 3);
+  // Cálculo do percentual de acerto para cada data da timeline
+  const timelinePercentageData = timelineData.map(d => {
+    const total = d.correct + d.incorrect;
+    return total ? parseFloat(((d.correct / total) * 100).toFixed(2)) : 0;
+  });
 
-  // Cálculo dos melhores e piores desempenhos por subárea
+  // Cálculo dos melhores e piores desempenhos por subárea (geral)
   let bestSubarea: SubareaProgress | null = null;
   let worstSubarea: SubareaProgress | null = null;
   if (subareaData && subareaData.length > 0) {
@@ -148,7 +151,7 @@ const Stats = () => {
     });
   }
 
-  // Função para gerar e baixar relatório em CSV
+  // Função para gerar e baixar relatório CSV
   const downloadReport = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += 'Overview Stats\n';
@@ -162,14 +165,14 @@ const Stats = () => {
       csvContent += `${cat.categoria},${cat.total_respondidas},${cat.total_corretas},${cat.percentual_acerto}\n`;
     });
     csvContent += '\nSubareas\n';
-    csvContent += 'Subárea,Total Respondidas,Total Corretas,Percentual Acerto\n';
+    csvContent += 'Categoria,Subárea,Total Respondidas,Total Corretas,Percentual Acerto\n';
     subareaData.forEach((sub) => {
-      csvContent += `${sub.subarea},${sub.total_respondidas},${sub.total_corretas},${sub.percentual_acerto}\n`;
+      csvContent += `${sub.categoria},${sub.subarea},${sub.total_respondidas},${sub.total_corretas},${sub.percentual_acerto}\n`;
     });
     csvContent += '\nTimeline\n';
-    csvContent += 'Data,Acertos\n';
+    csvContent += 'Data,Acertos,Erros,Tempo Médio\n';
     timelineData.forEach((item) => {
-      csvContent += `${item.date},${item.correct}\n`;
+      csvContent += `${item.date},${item.correct},${item.incorrect},${item.avg_time}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -214,7 +217,7 @@ const Stats = () => {
             {(['day', 'week', 'month', 'semestre', 'year', 'custom'] as TimeRange[]).map((range) => (
               <button
                 key={range}
-                onClick={() => setTimeRange(range)}
+                onClick={() => { setTimeRange(range); setSelectedCategory(null); }}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   timeRange === range
                     ? 'bg-blue-600 text-white'
@@ -222,14 +225,14 @@ const Stats = () => {
                 }`}
                 aria-label={`Filtrar por ${range}`}
               >
-                {{
+                {({
                   day: 'Diário',
                   week: 'Semanal',
                   month: 'Mensal',
                   semestre: 'Semestral',
                   year: 'Anual',
                   custom: 'Personalizado',
-                }[range]}
+                }[range])}
               </button>
             ))}
           </div>
@@ -259,7 +262,21 @@ const Stats = () => {
         </div>
       </div>
 
-      {/* Exibição de erros */}
+      {/* Painel de Número de Questões Realizadas */}
+      {overviewData && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold">Questões Realizadas</h2>
+          <div className="mt-4">
+            <StatCard
+              title="Total de Questões"
+              value={overviewData.total_questoes_respondidas}
+              icon="📚"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Exibição de Erros */}
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
@@ -279,12 +296,12 @@ const Stats = () => {
         </div>
       ) : (
         <>
-          {/* Abas */}
+          {/* Abas de Navegação */}
           <div className="tabs mb-8 border-b">
-            {(['overview', 'categories', 'subareas', 'timeline'] as const).map((tab) => (
+            {(['overview', 'timeline', 'timeVsAccuracy', 'categories', 'subareas'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { setActiveTab(tab); setSelectedCategory(null); }}
                 className={`px-4 py-2 mr-4 transition-colors focus:outline-none ${
                   activeTab === tab
                     ? 'border-b-2 border-blue-600 text-blue-600'
@@ -294,15 +311,16 @@ const Stats = () => {
               >
                 {{
                   overview: 'Visão Geral',
-                  categories: 'Por Categoria',
-                  subareas: 'Por Subárea',
                   timeline: 'Linha do Tempo',
+                  timeVsAccuracy: 'Tempo vs Acerto',
+                  categories: 'Por Categoria',
+                  subareas: 'Por Subárea'
                 }[tab]}
               </button>
             ))}
           </div>
 
-          {/* Conteúdo das abas */}
+          {/* Conteúdo das Abas */}
           {activeTab === 'overview' && overviewData && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -346,7 +364,6 @@ const Stats = () => {
                   )}
                 </div>
               </div>
-              {/* Cartões extras para análise por subárea */}
               {subareaData.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                   {bestSubarea && (
@@ -368,22 +385,135 @@ const Stats = () => {
             </>
           )}
 
-          {activeTab === 'categories' && (
+          {activeTab === 'timeline' && timelineData.length > 0 && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
-              <BarChart
+              <LineChart
                 data={{
-                  labels: categoryData.map(d => d.categoria),
+                  labels: timelineData.map(d => d.date),
+                  datasets: [
+                    {
+                      label: 'Taxa de Acerto (%)',
+                      data: timelinePercentageData,
+                      borderColor: '#4CAF50',
+                      tension: 0.1,
+                      fill: false,
+                    },
+                    {
+                      label: 'Tendência',
+                      data: calculateMovingAverage(timelinePercentageData, 3),
+                      borderColor: '#3B82F6',
+                      borderDash: [5, 5],
+                      tension: 0.1,
+                      fill: false,
+                    }
+                  ]
+                }}
+                options={{
+                  responsive: true,
+                  scales: {
+                    x: {
+                      type: 'time',
+                      time: { 
+                        unit: timeRange === 'custom' ? 'day' : (timeRange === 'semestre' ? 'month' : timeRange)
+                      },
+                      title: { display: true, text: 'Data' },
+                    },
+                    y: {
+                      beginAtZero: true,
+                      title: { display: true, text: 'Taxa de Acerto (%)' },
+                    },
+                  },
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'timeVsAccuracy' && timelineData.length > 0 && (
+            <div className="bg-white p-6 rounded-xl shadow h-96">
+              <ScatterChart
+                data={{
                   datasets: [{
-                    label: 'Taxa de Acerto (%)',
-                    data: categoryData.map(d => parseFloat(d.percentual_acerto)),
-                    backgroundColor: '#3B82F6',
+                    label: 'Tempo vs Taxa de Acerto',
+                    data: timelineData.map(d => {
+                      const total = d.correct + d.incorrect;
+                      const percentage = total ? ((d.correct / total) * 100) : 0;
+                      return { x: d.avg_time, y: percentage };
+                    }),
+                    backgroundColor: '#FF9800'
                   }]
                 }}
                 options={{
                   responsive: true,
-                  scales: { y: { beginAtZero: true } }
+                  scales: {
+                    x: {
+                      title: { display: true, text: 'Tempo Médio (s)' },
+                    },
+                    y: {
+                      title: { display: true, text: 'Taxa de Acerto (%)' }
+                    }
+                  }
                 }}
               />
+            </div>
+          )}
+
+          {activeTab === 'categories' && (
+            <div className="bg-white p-6 rounded-xl shadow">
+              {!selectedCategory ? (
+                <>
+                  <BarChart
+                    data={{
+                      labels: categoryData.map(d => d.categoria),
+                      datasets: [{
+                        label: 'Taxa de Acerto (%)',
+                        data: categoryData.map(d => parseFloat(d.percentual_acerto.replace('%', ''))),
+                        backgroundColor: '#3B82F6',
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      scales: { y: { beginAtZero: true } }
+                    }}
+                  />
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {categoryData.map((cat) => (
+                      <div
+                        key={cat.categoria}
+                        className="cursor-pointer p-4 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                        onClick={() => setSelectedCategory(cat.categoria)}
+                      >
+                        <p className="font-semibold">{cat.categoria}</p>
+                        <p>Taxa: {cat.percentual_acerto}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Subáreas de {selectedCategory}</h2>
+                  <BarChart
+                    data={{
+                      labels: subareaData
+                        .filter(s => s.categoria === selectedCategory)
+                        .map(d => d.subarea),
+                      datasets: [{
+                        label: 'Taxa de Acerto (%)',
+                        data: subareaData
+                          .filter(s => s.categoria === selectedCategory)
+                          .map(d => parseFloat(d.percentual_acerto.replace('%', ''))),
+                        backgroundColor: '#4CAF50'
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      scales: { y: { beginAtZero: true } }
+                    }}
+                  />
+                  <button onClick={() => setSelectedCategory(null)} className="mt-4 px-4 py-2 bg-gray-300 rounded">
+                    Voltar
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -392,67 +522,15 @@ const Stats = () => {
               <BarChart
                 data={{
                   labels: subareaData.map(d => d.subarea),
-                  datasets: [
-                    {
-                      label: 'Acertos',
-                      data: subareaData.map(d => d.total_corretas),
-                      backgroundColor: '#4CAF50',
-                    },
-                    {
-                      label: 'Erros',
-                      data: subareaData.map(d => d.total_respondidas - d.total_corretas),
-                      backgroundColor: '#F44336',
-                    }
-                  ]
+                  datasets: [{
+                    label: 'Taxa de Acerto (%)',
+                    data: subareaData.map(d => parseFloat(d.percentual_acerto.replace('%', ''))),
+                    backgroundColor: '#4CAF50'
+                  }]
                 }}
                 options={{
                   responsive: true,
                   scales: { y: { beginAtZero: true } }
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === 'timeline' && timelineData.length > 0 && (
-            <div className="bg-white p-6 rounded-xl shadow h-96">
-              <LineChart
-                data={{
-                    labels: timelineData.map(d => d.date),
-                    datasets: [
-                    {
-                        label: 'Acertos',
-                        data: acertosData,
-                        borderColor: '#4CAF50',
-                        tension: 0.1,
-                        fill: false,
-                    },
-                    {
-                        label: 'Tendência',
-                        data: trendData,
-                        borderColor: '#3B82F6',
-                        borderDash: [5, 5],
-                        tension: 0.1,
-                        fill: false,
-                    }
-                    ]
-                }}
-                options={{
-                    responsive: true,
-                    scales: {
-                    x: {
-                        type: 'time',
-                        time: { 
-                        unit: timeRange === 'custom' 
-                                ? 'day' 
-                                : (timeRange === 'semestre' ? 'month' : timeRange)
-                        },
-                        title: { display: true, text: 'Data' },
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Acertos' },
-                    },
-                  },
                 }}
               />
             </div>

@@ -41,6 +41,21 @@ interface SubareaProgress {
   percentual_acerto: string;
 }
 
+// Componente para exibir os timers com um design moderno
+const TimerDisplay = ({ label, time }: { label: string; time: number }) => {
+  const minutes = Math.floor(time / 60)
+    .toString()
+    .padStart(2, '0');
+  const seconds = (time % 60).toString().padStart(2, '0');
+
+  return (
+    <div className="flex flex-col items-center justify-center p-3 bg-gradient-to-r from-indigo-500 to-blue-500 text-white rounded-xl shadow-lg">
+      <span className="text-sm font-medium">{label}</span>
+      <span className="text-2xl font-bold">{minutes}:{seconds}</span>
+    </div>
+  );
+};
+
 const Stats = () => {
   const { authToken } = useAuth();
   const [overviewData, setOverviewData] = useState<OverviewStats | null>(null);
@@ -59,6 +74,40 @@ const Stats = () => {
   // Estados para loading e erro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados para os timers
+  const [questionTime, setQuestionTime] = useState<number>(0);
+  const [sessionTime, setSessionTime] = useState<number>(0);
+
+  // Timer de sessão: inicia ao montar o componente
+  useEffect(() => {
+    const sessionInterval = setInterval(() => {
+      setSessionTime(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(sessionInterval);
+  }, []);
+
+  // Timer de questão: incrementa a cada segundo
+  useEffect(() => {
+    const questionInterval = setInterval(() => {
+      setQuestionTime(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(questionInterval);
+  }, []);
+
+  // Função que simula o envio do tempo da questão para o servidor
+  const sendQuestionTime = async (time: number) => {
+    // Aqui você pode implementar o envio real para o servidor
+    console.log('Enviando tempo da questão para o servidor:', time);
+    // Exemplo: await fetch(...);
+  };
+
+  // Ao passar para a próxima questão, envia o tempo atual e reinicia o timer
+  const handleNextQuestion = async () => {
+    await sendQuestionTime(questionTime);
+    setQuestionTime(0);
+    // Aqui você pode incluir a lógica de navegação para a próxima questão
+  };
 
   // Função para calcular média móvel (janela de 3 pontos)
   const calculateMovingAverage = (data: number[], windowSize: number): number[] => {
@@ -195,7 +244,7 @@ const Stats = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Cabeçalho */}
+      {/* Cabeçalho e seção de Timers */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold">Estatísticas Detalhadas</h1>
         <button 
@@ -204,6 +253,19 @@ const Stats = () => {
           aria-label="Baixar relatório em CSV"
         >
           Baixar Relatório (CSV)
+        </button>
+      </div>
+
+      {/* Seção dos Timers */}
+      <div className="flex flex-col md:flex-row items-center justify-end gap-4 mb-6">
+        <TimerDisplay label="Tempo da Questão" time={questionTime} />
+        <TimerDisplay label="Tempo da Sessão" time={sessionTime} />
+        <button 
+          onClick={handleNextQuestion} 
+          className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition"
+          aria-label="Avançar para a próxima questão"
+        >
+          Próxima Questão
         </button>
       </div>
 
@@ -419,40 +481,40 @@ const Stats = () => {
                 data={{
                     labels: timelineData.map(d => d.date),
                     datasets: [
-                    {
+                      {
                         label: 'Acertos',
                         data: acertosData,
                         borderColor: '#4CAF50',
                         tension: 0.1,
                         fill: false,
-                    },
-                    {
+                      },
+                      {
                         label: 'Tendência',
                         data: trendData,
                         borderColor: '#3B82F6',
                         borderDash: [5, 5],
                         tension: 0.1,
                         fill: false,
-                    }
+                      }
                     ]
                 }}
                 options={{
                     responsive: true,
                     scales: {
-                    x: {
+                      x: {
                         type: 'time',
                         time: { 
-                        unit: timeRange === 'custom' 
-                                ? 'day' 
-                                : (timeRange === 'semestre' ? 'month' : timeRange)
+                          unit: timeRange === 'custom' 
+                                  ? 'day' 
+                                  : (timeRange === 'semestre' ? 'month' : timeRange)
                         },
                         title: { display: true, text: 'Data' },
-                    },
-                    y: {
+                      },
+                      y: {
                         beginAtZero: true,
                         title: { display: true, text: 'Acertos' },
+                      },
                     },
-                  },
                 }}
               />
             </div>

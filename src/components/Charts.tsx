@@ -1,4 +1,4 @@
-import { Bar, Line, Pie } from 'react-chartjs-2';
+import { Bar, Line, Pie, Scatter } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -106,31 +106,65 @@ export const LineChart = ({ data, options }: ChartProps) => (
 );
 
 type PieChartProps = {
-    data: any;
-    options?: ChartOptions<'pie'>;
-  };
-  
-  export const PieChart = ({ data, options }: PieChartProps) => (
-    <Pie
-      data={data}
-      options={{
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-          },
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const label = context.label || '';
-                const value = context.parsed || 0;
-                return `${label}: ${value}%`;
-              }
+  data: any;
+  options?: ChartOptions<'pie'>;
+};
+
+export const PieChart = ({ data, options }: PieChartProps) => (
+  <Pie
+    data={data}
+    options={{
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              return `${label}: ${value}%`;
             }
           }
+        }
+      },
+      ...options
+    }}
+  />
+);
+
+export const ScatterChart = ({ data, options }: ChartProps) => (
+  <Scatter
+    data={data}
+    options={{
+      ...options,
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'linear',
+          position: 'bottom',
+          title: {
+            display: true,
+            text: 'Tempo Médio (s)'
+          }
         },
-        ...options
-      }}
-    />
-  );
+        y: {
+          type: 'linear',
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Taxa de Acerto (%)'
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+        }
+      }
+    }}
+  />
+);
