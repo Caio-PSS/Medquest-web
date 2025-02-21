@@ -457,63 +457,22 @@ const Stats = () => {
             </div>
           )}
 
-          {activeTab === 'categories' && (
+{activeTab === 'categories' && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
-              {!selectedCategory ? (
-                <>
-                  <BarChart
-                    data={{
-                      labels: categoryData.map(d => d.categoria),
-                      datasets: [{
-                        label: 'Taxa de Acerto (%)',
-                        data: categoryData.map(d => parseFloat(d.percentual_acerto.replace('%', ''))),
-                        backgroundColor: '#3B82F6',
-                      }]
-                    }}
-                    options={{
-                      responsive: true,
-                      scales: { y: { beginAtZero: true } }
-                    }}
-                  />
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {categoryData.map((cat) => (
-                      <div
-                        key={cat.categoria}
-                        className="cursor-pointer p-4 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                        onClick={() => setSelectedCategory(cat.categoria)}
-                      >
-                        <p className="font-semibold">{cat.categoria}</p>
-                        <p>Taxa: {cat.percentual_acerto}</p>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Subáreas de {selectedCategory}</h2>
-                  <BarChart
-                    data={{
-                      labels: subareaData
-                        .filter(s => s.categoria === selectedCategory)
-                        .map(d => d.subarea),
-                      datasets: [{
-                        label: 'Taxa de Acerto (%)',
-                        data: subareaData
-                          .filter(s => s.categoria === selectedCategory)
-                          .map(d => parseFloat(d.percentual_acerto.replace('%', ''))),
-                        backgroundColor: '#4CAF50'
-                      }]
-                    }}
-                    options={{
-                      responsive: true,
-                      scales: { y: { beginAtZero: true } }
-                    }}
-                  />
-                  <button onClick={() => setSelectedCategory(null)} className="mt-4 px-4 py-2 bg-gray-300 rounded">
-                    Voltar
-                  </button>
-                </div>
-              )}
+              <BarChart
+                data={{
+                  labels: categoryData.map(d => d.categoria),
+                  datasets: [{
+                    label: 'Taxa de Acerto (%)',
+                    data: categoryData.map(d => parseFloat(d.percentual_acerto)),
+                    backgroundColor: '#3B82F6',
+                  }]
+                }}
+                options={{
+                  responsive: true,
+                  scales: { y: { beginAtZero: true } }
+                }}
+              />
             </div>
           )}
 
