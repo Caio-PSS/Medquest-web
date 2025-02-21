@@ -42,7 +42,7 @@ const Session = () => {
   // Estado "tick" para forçar atualização a cada segundo
   const [tick, setTick] = useState(0);
   
-  const [numQuestions, setNumQuestions] = useState(20);
+  const [numQuestions, setNumQuestions] = useState(5);
   const [includeRepeats, setIncludeRepeats] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
@@ -94,11 +94,11 @@ const Session = () => {
     if (authToken) fetchCategories();
   }, [authToken]);
 
-  useEffect(() => {
-    if (questions.length > 0 && currentQuestion >= questions.length) {
-      navigate('/session-stats', { state: sessionStats });
-    }
-  }, [currentQuestion, questions.length, navigate, sessionStats]);
+useEffect(() => {
+  if (questions.length > 0 && currentQuestion >= questions.length) {
+    navigate('/session-stats', { state: sessionStats });
+  }
+}, [currentQuestion, questions.length, navigate, sessionStats]);
 
   const handleSubtopicSelect = (category: string, subtopic: string) => {
     setSelections(prev => {
