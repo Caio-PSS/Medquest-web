@@ -3,16 +3,15 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AuthCheck = () => {
-  const { logout, authToken } = useAuth();
+  const { logout, authToken, isLoading } = useAuth(); // Adicione isLoading
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if there's no valid authToken
-    if (!authToken) {
-      logout(); // Ensure localStorage is cleaned up
+    if (!isLoading && !authToken) { // Só redirecione após o carregamento
+      logout();
       navigate('/login');
     }
-  }, [authToken, logout, navigate]);
+  }, [authToken, logout, navigate, isLoading]); // Adicione isLoading às dependências
 
   return null;
 };

@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true
 });
 
-const INACTIVITY_TIMEOUT = 6 * 60 * 60 * 1000; // 6 hours
+const INACTIVITY_TIMEOUT = 6 * 60 * 60 * 1000; // 6 horas
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -43,26 +43,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const decoded: DecodedToken = jwtDecode(token);
       return { id: decoded.id, email: decoded.email };
     } catch (error) {
-      console.error("Invalid token:", error);
+      console.error("Token inválido:", error);
       return null;
     }
   }, []);
 
+  // Verificação inicial do token
   useEffect(() => {
-  const token = localStorage.getItem('medquest_token');
-  if (token) {
-    const user = decodeToken(token);
-    if (user) {
-      setAuthToken(token);
-      setAuthUser(user);
-    } else {
-      // Remove invalid token from localStorage
-      localStorage.removeItem('medquest_token');
+    const token = localStorage.getItem('medquest_token');
+    if (token) {
+      const user = decodeToken(token);
+      if (user) {
+        setAuthToken(token);
+        setAuthUser(user);
+      } else {
+        localStorage.removeItem('medquest_token'); // Remove token inválido
+      }
     }
-  }
-  setIsLoading(false);
+    setIsLoading(false); // Finaliza o carregamento
   }, [decodeToken]);
 
+  // Sistema de logout
   const logout = useCallback(() => {
     localStorage.removeItem('medquest_token');
     localStorage.removeItem('inactivity_expiry');
@@ -71,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
   }, [inactivityTimeoutId]);
 
+  // Verificação de expiração do token
   const checkTokenExpiration = useCallback(() => {
     const token = localStorage.getItem('medquest_token');
     if (!token) return;
@@ -83,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [logout]);
 
+  // Sistema de inatividade
   const resetInactivityTimeout = useCallback(() => {
     if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
 
@@ -94,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('inactivity_expiry', (Date.now() + INACTIVITY_TIMEOUT).toString());
   }, [logout, inactivityTimeoutId]);
 
+  // Event listeners de atividade
   useEffect(() => {
     const handleActivity = () => resetInactivityTimeout();
     
@@ -108,16 +112,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [resetInactivityTimeout]);
 
+  // Função de login
   const login = useCallback((token: string) => {
     const user = decodeToken(token);
-    if (!user) return;
+    if (!user) {
+      localStorage.removeItem('medquest_token'); // Limpa token inválido
+      return;
+    }
 
     localStorage.setItem('medquest_token', token);
-    setAuthToken(token);
+    setAuthToken(token); // Atualiza estado imediatamente
     setAuthUser(user);
     resetInactivityTimeout();
   }, [decodeToken, resetInactivityTimeout]);
 
+  // Verificação periódica do token
   useEffect(() => {
     const checkAuthState = setInterval(checkTokenExpiration, 60000);
     return () => clearInterval(checkAuthState);
