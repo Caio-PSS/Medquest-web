@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
-const SessionStats = () => {
+const Feedback = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
@@ -29,9 +29,7 @@ const SessionStats = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionStats: { totalQuestions, correct, incorrect, totalTime },
-          wrongQuestions, // array de strings com os detalhes das questões erradas
-          correctQuestions, // array de strings com os detalhes das questões corretas
+          sessionStats: { totalQuestions, correct, incorrect, totalTime, wrongQuestions, correctQuestions }
         }),
       });
       const data = await response.json();
@@ -126,4 +124,4 @@ const SessionStats = () => {
   );
 };
 
-export default SessionStats;
+export default Feedback;

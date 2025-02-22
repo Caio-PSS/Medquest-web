@@ -47,12 +47,14 @@ const Session = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
   
-  // Estado para armazenar estatísticas da sessão
-  const [SessionStats, setSessionStats] = useState({
+  // Estado para armazenar estatísticas da sessão, agora incluindo arrays de questões
+  const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
     incorrect: 0,
     totalTime: 0,
+    wrongQuestions: [] as string[],
+    correctQuestions: [] as string[],
   });
 
   // Atualiza o tick a cada 1 segundo para atualizar os timers na tela
@@ -96,9 +98,9 @@ const Session = () => {
 
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
-      navigate('/feedback', { state: SessionStats });
+      navigate('/feedback', { state: sessionStats });
     }
-  }, [currentQuestion, questions.length, navigate, SessionStats]);
+  }, [currentQuestion, questions.length, navigate, sessionStats]);
 
   const handleSubtopicSelect = (category: string, subtopic: string) => {
     setSelections(prev => {
@@ -150,7 +152,7 @@ const Session = () => {
       const data = await res.json();
       setQuestions(data);
       
-      // Reinicia ambos os timers e as estatísticas da sessão ao iniciar
+      // Reinicia timers e estatísticas ao iniciar a sessão
       setQuestionStartTime(Date.now());
       setSessionStartTime(Date.now());
       setCurrentQuestion(0);
@@ -159,6 +161,8 @@ const Session = () => {
         correct: 0,
         incorrect: 0,
         totalTime: 0,
+        wrongQuestions: [],
+        correctQuestions: [],
       });
     } catch (err) {
       console.error(err);
@@ -189,12 +193,18 @@ const Session = () => {
         })
       });
   
-      // Atualiza as estatísticas da sessão
+      // Atualiza as estatísticas da sessão, incluindo detalhes da questão
       setSessionStats(prev => ({
         ...prev,
         correct: prev.correct + (isCorrect ? 1 : 0),
         incorrect: prev.incorrect + (isCorrect ? 0 : 1),
         totalTime: prev.totalTime + timeTaken,
+        correctQuestions: isCorrect 
+          ? [...prev.correctQuestions, `Questão ${currentQ.id}: ${currentQ.enunciado}`]
+          : prev.correctQuestions,
+        wrongQuestions: !isCorrect 
+          ? [...prev.wrongQuestions, `Questão ${currentQ.id}: ${currentQ.enunciado}`]
+          : prev.wrongQuestions,
       }));
   
     } catch (err) {
@@ -204,10 +214,10 @@ const Session = () => {
   };
 
   // Ao avançar para a próxima questão, reinicia o timer da questão
-    const handleNextQuestion = () => {
-      setCurrentQuestion(prev => prev + 1);
-      setQuestionStartTime(Date.now());
-    };
+  const handleNextQuestion = () => {
+    setCurrentQuestion(prev => prev + 1);
+    setQuestionStartTime(Date.now());
+  };
 
   // Cálculo dos tempos (em segundos)
   const questionElapsed = Math.floor((Date.now() - questionStartTime) / 1000);
@@ -352,7 +362,7 @@ const Session = () => {
               <Bars height="50" width="50" color="#3b82f6" ariaLabel="loading" />
             </div>
           ) : (
-            questions[currentQuestion] && ( // ⬅️ Verificação crítica
+            questions[currentQuestion] && (
               <Question 
                 key={currentQuestion}
                 data={questions[currentQuestion]} 

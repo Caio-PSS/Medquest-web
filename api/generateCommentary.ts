@@ -28,10 +28,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     concurrentRequests++;
 
     // Recebe os dados da requisição
-    const { sessionStats, wrongQuestions, correctQuestions } = req.body;
+    const { sessionStats } = req.body;
+    const { wrongQuestions = [], correctQuestions = [] } = sessionStats;
 
-    // Monta o prompt para IA
-    const prompt = `Você é um Coach de questões de residência médica...`;
+    // Monta o prompt para IA, incluindo detalhes das estatísticas e questões
+    const prompt = `Você é um Coach de questões de residência médica. Aqui estão as estatísticas da sessão:
+Total de questões: ${sessionStats.totalQuestions}
+Acertos: ${sessionStats.correct}
+Erros: ${sessionStats.incorrect}
+Tempo total: ${sessionStats.totalTime} segundos
+
+Detalhes das questões corretas:
+${correctQuestions.join("\n")}
+
+Detalhes das questões erradas:
+${wrongQuestions.join("\n")}
+
+Forneça um comentário construtivo para a sessão.`;
 
     // Inicializa OpenAI
     const token = process.env.GITHUB_TOKEN;
@@ -53,9 +66,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     return res.status(200).json({ commentary: response.choices[0].message.content });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erro na API de comentário:", error);
-    return res.status(429).json({ error: "Erro interno ou limite de requisições excedido." });
+    return res.status(500).json({ error: error.message });
   } finally {
     concurrentRequests = Math.max(0, concurrentRequests - 1);
   }
