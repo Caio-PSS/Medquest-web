@@ -8,6 +8,7 @@ import Stats from './pages/Stats';
 import Feedback from './pages/Feedback';
 import Register from './components/Register';
 import AuthCheck from './components/AuthCheck';
+import GamificationPage from './pages/GamificationPage';
 import { Analytics } from '@vercel/analytics/react'; // Import Analytics
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/session" element={<Session />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/gamification" element={<GamificationPage />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -41,23 +41,24 @@ const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
     const { wrongComments = [], correctComments = [] } = sessionStats;
 
     // Monta o prompt para IA, incluindo detalhes das estatísticas e questões
-    const prompt = `"Seja um coach direto e objetivo para questões de residência médica. Analise estatísticas (acertos/erros/tempo) e questões específicas. Indique 2-3 temas prioritários com:  
-- Nome do tópico  
-- Conceitos-chave para revisão  
-- Impacto prático do tema na porvas de residência e na prática clínica  
-- Ações concretas (ex.: Estude mais o assunto X da matéria Y; Demore mais em tal tipo de questão).  
-Máximo: 300 caracteres por tópico. Use emojis apenas em títulos.
-Dados:
-Total de questões: ${sessionStats.totalQuestions}
-Acertos: ${sessionStats.correct}
-Erros: ${sessionStats.incorrect}
-Tempo total: ${sessionStats.totalTime} segundos
+      const prompt = `**Atue como um tutor especialista em provas de residência médica** 🔍
 
-Detalhes das questões corretas:
-${correctComments.join("\n")}
-
-Detalhes das questões erradas:
-${wrongComments.join("\n")}`;
+      1. **Análise Geral** (1-2 linhas no máximo):
+        - "${sessionStats.correct} acertos vs ${sessionStats.incorrect} erros: [Destaque principal performance]."
+      
+      2. **Raio-X dos Erros** (foco nos ${sessionStats.incorrect} erros):
+        ${wrongComments.join("\n\n")}
+        ▸ Identifique os principais padrões nas questões que o estudante errou acima:
+        - **Padrão**: [Tema] + Motivo (ex: "Confundiu mecanismos fisiopatológicos? Interpretou exame incorretamente?")
+        - **Correção**: Ação específica (ex: "Revizar fluxograma de diagnóstico para X")
+        - **Impacto**: Como esse erro prejudicaria na prática clínica real?
+      
+      3. **Plano de Revisão** (baseado nos erros por tópicos):
+      
+      Dados-chave:  
+      ⏳ Tempo médio: ${(sessionStats.totalTime/sessionStats.totalQuestions).toFixed(1)}s/q  
+      📊 Taxa de acerto: ${((sessionStats.correct/sessionStats.totalQuestions)*100).toFixed(1)}%  
+      🔴 Maior erro: [Área com mais erros]`;
 
     // Inicializa OpenAI
     const token = process.env.GITHUB_TOKEN;

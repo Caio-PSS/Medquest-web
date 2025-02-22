@@ -7,8 +7,9 @@ const AuthCheck = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authToken && !localStorage.getItem('medquest_token')) {
-      logout();
+    // Check if there's no valid authToken
+    if (!authToken) {
+      logout(); // Ensure localStorage is cleaned up
       navigate('/login');
     }
   }, [authToken, logout, navigate]);

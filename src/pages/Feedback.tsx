@@ -1,18 +1,17 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Feedback = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Dados da sessão enviados via state (incluindo arrays de questões erradas e corretas)
   const sessionStats = state || { 
     totalQuestions: 0, 
     correct: 0, 
     incorrect: 0, 
     totalTime: 0,
-    wrongComments: [], // Ex: ["Questão 3: Conteúdo...", "Questão 7: Conteúdo..."]
-    correctComments: [] // Ex: ["Questão 1: Conteúdo...", "Questão 2: Conteúdo..."]
+    wrongComments: [],
+    correctComments: []
   };
 
   const { totalQuestions, correct, incorrect, totalTime, wrongComments, correctComments } = sessionStats;
@@ -22,15 +21,32 @@ const Feedback = () => {
   const [commentary, setCommentary] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
+  useEffect(() => {
+    generateCommentary();
+  }, []);
+
+  const formatCommentary = (text: string) => {
+    return text.split('\n').map((line: string, index: number) => {
+      if (line.startsWith('## ')) {
+        return <h3 key={index} className="text-xl font-bold text-gray-800 mt-6 mb-3">{line.replace('## ', '')}</h3>;
+      }
+      if (line.startsWith('### ')) {
+        return <h4 key={index} className="font-semibold text-gray-800 mt-4 mb-2">{line.replace('### ', '')}</h4>;
+      }
+      if (line.startsWith('**')) {
+        return <p key={index} className="font-medium text-gray-700 my-2">{line.replace(/\*\*/g, '')}</p>;
+      }
+      return <p key={index} className="text-gray-600 mb-3 leading-relaxed">{line}</p>;
+    });
+  };
+
   const generateCommentary = async () => {
     setIsGenerating(true);
     try {
       const response = await fetch('/api/generateCommentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionStats: { totalQuestions, correct, incorrect, totalTime, wrongComments, correctComments }
-        }),
+        body: JSON.stringify({ sessionStats }),
       });
       const data = await response.json();
       if (response.ok) {
@@ -47,79 +63,56 @@ const Feedback = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Estatísticas da Sessão</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Cartões com dados da sessão */}
-        <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📚</span>
-            <div>
-              <p className="text-sm text-gray-600">Total de Questões Respondidas</p>
-              <p className="text-xl font-semibold">{totalQuestions}</p>
-            </div>
-          </div>
+    <div className="p-6 max-w-7xl mx-auto min-h-screen">
+      <h1 className="text-3xl font-bold mb-8 text-gray-800">Análise Detalhada da Sessão</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-12">
+        <div className="bg-indigo-50 p-4 rounded-xl shadow-sm">
+          <div className="text-indigo-600 font-semibold">Total Questões</div>
+          <div className="text-3xl font-bold text-gray-800">{totalQuestions}</div>
         </div>
-        <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎯</span>
-            <div>
-              <p className="text-sm text-gray-600">Total de Acertos</p>
-              <p className="text-xl font-semibold">{correct}</p>
-            </div>
-          </div>
+        <div className="bg-green-50 p-4 rounded-xl shadow-sm">
+          <div className="text-green-600 font-semibold">Acertos</div>
+          <div className="text-3xl font-bold text-gray-800">{correct}</div>
         </div>
-        <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">❌</span>
-            <div>
-              <p className="text-sm text-gray-600">Total de Erros</p>
-              <p className="text-xl font-semibold">{incorrect}</p>
-            </div>
-          </div>
+        <div className="bg-red-50 p-4 rounded-xl shadow-sm">
+          <div className="text-red-600 font-semibold">Erros</div>
+          <div className="text-3xl font-bold text-gray-800">{incorrect}</div>
         </div>
-        <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📈</span>
-            <div>
-              <p className="text-sm text-gray-600">Percentual de Acertos</p>
-              <p className="text-xl font-semibold">{percentualAcertos}%</p>
-            </div>
-          </div>
+        <div className="bg-purple-50 p-4 rounded-xl shadow-sm">
+          <div className="text-purple-600 font-semibold">% Acertos</div>
+          <div className="text-3xl font-bold text-gray-800">{percentualAcertos}%</div>
         </div>
-        <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">⏱️</span>
-            <div>
-              <p className="text-sm text-gray-600">Tempo Médio de Resposta</p>
-              <p className="text-xl font-semibold">{tempoMedioResposta}s</p>
-            </div>
-          </div>
+        <div className="bg-amber-50 p-4 rounded-xl shadow-sm">
+          <div className="text-amber-600 font-semibold">Tempo Médio</div>
+          <div className="text-3xl font-bold text-gray-800">{tempoMedioResposta}s</div>
         </div>
       </div>
-      
-      <div className="mt-8 flex flex-col gap-4">
+
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Análise do Desempenho</h2>
+        
+        {isGenerating ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          commentary && (
+            <div className="space-y-4 prose max-w-none">
+              {formatCommentary(commentary)}
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="flex justify-end mt-8">
         <button 
           onClick={() => navigate('/')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
         >
           Voltar ao Dashboard
         </button>
-        <button 
-          onClick={generateCommentary}
-          disabled={isGenerating}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          {isGenerating ? 'Gerando Comentário...' : 'Gerar Comentário'}
-        </button>
       </div>
-
-      {commentary && (
-        <div className="mt-8 p-6 bg-gray-100 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4">Comentário do Coach</h2>
-          <p className="text-gray-700 whitespace-pre-line">{commentary}</p>
-        </div>
-      )}
     </div>
   );
 };

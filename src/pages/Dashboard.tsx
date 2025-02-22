@@ -169,7 +169,7 @@ const Dashboard = () => {
               </div>
             </Link>
             <Link
-              to="/achievements"
+              to="/gamification"
               className="flex items-center gap-2.5 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
             >
               <div className="p-2 bg-yellow-100 rounded-lg group-hover:bg-yellow-200">

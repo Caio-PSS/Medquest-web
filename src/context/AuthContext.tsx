@@ -49,15 +49,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem('medquest_token');
-    if (token) {
-      const user = decodeToken(token);
-      if (user) {
-        setAuthToken(token);
-        setAuthUser(user);
-      }
+  const token = localStorage.getItem('medquest_token');
+  if (token) {
+    const user = decodeToken(token);
+    if (user) {
+      setAuthToken(token);
+      setAuthUser(user);
+    } else {
+      // Remove invalid token from localStorage
+      localStorage.removeItem('medquest_token');
     }
-    setIsLoading(false);
+  }
+  setIsLoading(false);
   }, [decodeToken]);
 
   const logout = useCallback(() => {
