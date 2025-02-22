@@ -25,7 +25,7 @@ const SessionStats = () => {
   const generateCommentary = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/commentary', {
+      const response = await fetch('/api/generateCommentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +102,7 @@ const SessionStats = () => {
       
       <div className="mt-8 flex flex-col gap-4">
         <button 
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           Voltar ao Dashboard
