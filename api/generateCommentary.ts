@@ -1,4 +1,4 @@
-import { RateLimiterMemory } from "rate-limiter-flexible";
+const { RateLimiterMemory } = require("rate-limiter-flexible");
 import OpenAI from "openai";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
