@@ -1,6 +1,10 @@
-const { RateLimiterMemory } = require("rate-limiter-flexible");
+/**
+ * @typedef {import('@vercel/node').VercelRequest} VercelRequest
+ * @typedef {import('@vercel/node').VercelResponse} VercelResponse
+ */
+
+import { RateLimiterMemory } from "rate-limiter-flexible";
 import OpenAI from "openai";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // Cria limitadores de requisição
 const rateLimiterMinute = new RateLimiterMemory({ points: 10, duration: 60 }); // 10 req/min
@@ -9,12 +13,17 @@ const rateLimiterDay = new RateLimiterMemory({ points: 50, duration: 86400 }); /
 let concurrentRequests = 0;
 const maxConcurrentRequests = 2;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+/**
+ * @param {VercelRequest} req
+ * @param {VercelResponse} res
+ */
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
 
-  const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress) as string;
+/** @type {string} */
+const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
 
   try {
     // Aplica limite de requisições
@@ -66,7 +75,7 @@ Forneça um comentário construtivo para a sessão.`;
     });
 
     return res.status(200).json({ commentary: response.choices[0].message.content });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro na API de comentário:", error);
     return res.status(500).json({ error: error.message });
   } finally {
