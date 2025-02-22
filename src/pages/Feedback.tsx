@@ -11,11 +11,11 @@ const Feedback = () => {
     correct: 0, 
     incorrect: 0, 
     totalTime: 0,
-    wrongQuestions: [], // Ex: ["Questão 3: Conteúdo...", "Questão 7: Conteúdo..."]
-    correctQuestions: [] // Ex: ["Questão 1: Conteúdo...", "Questão 2: Conteúdo..."]
+    wrongComments: [], // Ex: ["Questão 3: Conteúdo...", "Questão 7: Conteúdo..."]
+    correctComments: [] // Ex: ["Questão 1: Conteúdo...", "Questão 2: Conteúdo..."]
   };
 
-  const { totalQuestions, correct, incorrect, totalTime, wrongQuestions, correctQuestions } = sessionStats;
+  const { totalQuestions, correct, incorrect, totalTime, wrongComments, correctComments } = sessionStats;
   const percentualAcertos = totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : '0';
   const tempoMedioResposta = totalQuestions > 0 ? (totalTime / totalQuestions).toFixed(2) : '0';
 
@@ -29,7 +29,7 @@ const Feedback = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionStats: { totalQuestions, correct, incorrect, totalTime, wrongQuestions, correctQuestions }
+          sessionStats: { totalQuestions, correct, incorrect, totalTime, wrongComments, correctComments }
         }),
       });
       const data = await response.json();

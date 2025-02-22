@@ -200,7 +200,7 @@ const Session = () => {
         correct: prev.correct + (isCorrect ? 1 : 0),
         incorrect: prev.incorrect + (isCorrect ? 0 : 1),
         totalTime: prev.totalTime + timeTaken,
-        correctQuestions: isCorrect 
+        correctComments: isCorrect 
           ? [...prev.correctComments, `Questão ${currentQ.id}: ${currentQ.explicacao}`]
           : prev.correctComments,
         wrongComments: !isCorrect 
