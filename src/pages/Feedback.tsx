@@ -14,7 +14,7 @@ const SessionStats = () => {
     wrongQuestions: [], // Ex: ["Questão 3: Conteúdo...", "Questão 7: Conteúdo..."]
     correctQuestions: [] // Ex: ["Questão 1: Conteúdo...", "Questão 2: Conteúdo..."]
   };
-  
+
   const { totalQuestions, correct, incorrect, totalTime, wrongQuestions, correctQuestions } = sessionStats;
   const percentualAcertos = totalQuestions > 0 ? ((correct / totalQuestions) * 100).toFixed(2) : '0';
   const tempoMedioResposta = totalQuestions > 0 ? (totalTime / totalQuestions).toFixed(2) : '0';
