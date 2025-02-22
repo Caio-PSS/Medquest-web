@@ -38,22 +38,26 @@ const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
 
     // Recebe os dados da requisição
     const { sessionStats } = req.body;
-    const { wrongQuestions = [], correctQuestions = [] } = sessionStats;
+    const { wrongComments = [], correctComments = [] } = sessionStats;
 
     // Monta o prompt para IA, incluindo detalhes das estatísticas e questões
-    const prompt = `Você é um Coach de questões de residência médica. Aqui estão as estatísticas da sessão:
+    const prompt = `"Seja um coach direto e objetivo para questões de residência médica. Analise estatísticas (acertos/erros/tempo) e questões específicas. Indique 2-3 temas prioritários com:  
+- Nome do tópico  
+- Conceitos-chave para revisão  
+- Impacto prático do tema na porvas de residência e na prática clínica  
+- Ações concretas (ex.: Estude mais o assunto X da matéria Y; Demore mais em tal tipo de questão).  
+Máximo: 300 caracteres por tópico. Use emojis apenas em títulos.
+Dados:
 Total de questões: ${sessionStats.totalQuestions}
 Acertos: ${sessionStats.correct}
 Erros: ${sessionStats.incorrect}
 Tempo total: ${sessionStats.totalTime} segundos
 
 Detalhes das questões corretas:
-${correctQuestions.join("\n")}
+${correctComments.join("\n")}
 
 Detalhes das questões erradas:
-${wrongQuestions.join("\n")}
-
-Forneça um comentário construtivo para a sessão.`;
+${wrongComments.join("\n")}`;
 
     // Inicializa OpenAI
     const token = process.env.GITHUB_TOKEN;

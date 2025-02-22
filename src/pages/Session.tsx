@@ -16,6 +16,7 @@ type QuestionType = {
   subtema: string;
   image_url?: string;
   resposta: string;
+  explicacao?: string;
 };
 
 type Category = {
@@ -53,8 +54,8 @@ const Session = () => {
     correct: 0,
     incorrect: 0,
     totalTime: 0,
-    wrongQuestions: [] as string[],
-    correctQuestions: [] as string[],
+    wrongComments: [] as string[],
+    correctComments: [] as string[],
   });
 
   // Atualiza o tick a cada 1 segundo para atualizar os timers na tela
@@ -161,8 +162,8 @@ const Session = () => {
         correct: 0,
         incorrect: 0,
         totalTime: 0,
-        wrongQuestions: [],
-        correctQuestions: [],
+        wrongComments: [],
+        correctComments: [],
       });
     } catch (err) {
       console.error(err);
@@ -200,11 +201,11 @@ const Session = () => {
         incorrect: prev.incorrect + (isCorrect ? 0 : 1),
         totalTime: prev.totalTime + timeTaken,
         correctQuestions: isCorrect 
-          ? [...prev.correctQuestions, `Questão ${currentQ.id}: ${currentQ.enunciado}`]
-          : prev.correctQuestions,
-        wrongQuestions: !isCorrect 
-          ? [...prev.wrongQuestions, `Questão ${currentQ.id}: ${currentQ.enunciado}`]
-          : prev.wrongQuestions,
+          ? [...prev.correctComments, `Questão ${currentQ.id}: ${currentQ.explicacao}`]
+          : prev.correctComments,
+        wrongComments: !isCorrect 
+          ? [...prev.wrongComments, `Questão ${currentQ.id}: ${currentQ.explicacao}`]
+          : prev.wrongComments,
       }));
   
     } catch (err) {
