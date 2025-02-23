@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-// Definindo a interface para os desafios
 interface Challenge {
   id: number;
   nome: string;
   descricao: string;
-  tipo: string;
+  tipo: 'desempenho' | 'quantidade';
   meta?: {
     categoria?: string;
     percentual?: number;
+    quantidade?: number;
   };
   data_inicio: string;
   data_fim: string;
@@ -18,10 +18,8 @@ interface Challenge {
   progresso_atual: number;
 }
 
-// Definindo a interface para as conquistas
 interface Achievement {
   id: number;
-  icone: string;
   nome: string;
   descricao: string;
   data_conquista: string;
@@ -30,141 +28,128 @@ interface Achievement {
 const GamificationPage = () => {
   const { authToken } = useAuth();
   const navigate = useNavigate();
-
+  const [isLoading, setIsLoading] = useState(true);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
-    if (authToken) {
-      // Buscar desafios
-      fetch('https://medquest-floral-log-224.fly.dev/api/gamification/challenges', {
-        headers: { Authorization: `Bearer ${authToken}` }
-      })
-        .then(res => res.json())
-        .then((data: Challenge[]) => setChallenges(data))
-        .catch(err => console.error('Erro ao buscar desafios:', err));
-      
-      // Buscar conquistas
-      fetch('https://medquest-floral-log-224.fly.dev/api/gamification/achievements', {
-        headers: { Authorization: `Bearer ${authToken}` }
-      })
-        .then(res => res.json())
-        .then((data: Achievement[]) => setAchievements(data))
-        .catch(err => console.error('Erro ao buscar conquistas:', err));
-    }
+    if (!authToken) return;
+
+    const fetchData = async () => {
+      try {
+        const [challengesRes, achievementsRes] = await Promise.all([
+          fetch('https://medquest-floral-log-224.fly.dev/api/gamification/challenges', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          }),
+          fetch('https://medquest-floral-log-224.fly.dev/api/gamification/achievements', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          })
+        ]);
+
+        const challengesData = await challengesRes.json();
+        const achievementsData = await achievementsRes.json();
+
+        setChallenges(challengesData);
+        setAchievements(achievementsData);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, [authToken]);
 
-  // Filtrar apenas os desafios semanais
-  const weeklyChallenges = challenges.filter(
-    challenge => challenge.tipo.toLowerCase() === 'semanal'
-  );
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    };
+    return new Date(dateString).toLocaleDateString('pt-BR', options);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Header com botão de voltar */}
         <div className="flex items-center mb-6">
           <button
             onClick={() => navigate('/')}
             className="flex items-center text-blue-500 hover:text-blue-700 transition-colors"
           >
-            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Voltar
+            {/* Ícone de voltar */}
+            ← Voltar
           </button>
-          <h1 className="text-3xl font-bold ml-auto">Gamificação</h1>
+          <h1 className="text-3xl font-bold ml-auto">Desafios e Conquistas</h1>
         </div>
 
-        {/* Seção: Desafios Semanais */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold mb-4">Desafios Semanais</h2>
-          {weeklyChallenges.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {weeklyChallenges.map(challenge => (
-                <div
-                  key={challenge.id}
-                  className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-all"
-                >
-                  <h3 className="text-center font-semibold text-xl">{challenge.nome}</h3>
-                  <p className="mt-2 text-center text-gray-600 text-sm">{challenge.descricao}</p>
-                  {challenge.meta && (
-                    <div className="mt-2 text-center text-gray-500 text-xs">
-                      Meta: {challenge.meta.categoria ? `Categoria ${challenge.meta.categoria}` : ''}{' '}
-                      {challenge.meta.percentual ? `- ${challenge.meta.percentual}%` : ''}
-                    </div>
-                  )}
-                  {/* Barra de Progresso */}
-                  <div className="mt-4">
-                    <div className="relative pt-1">
-                      <div className="overflow-hidden h-2 mb-2 text-xs flex rounded-full bg-gray-200">
-                        {/* Preenchimento do progresso */}
-                        <div
-                          style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
-                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 rounded-full"
-                        ></div>
-                        {/* Marcação da meta */}
-                        {challenge.meta?.percentual && (
-                          <div
-                            style={{ left: `${challenge.meta.percentual}%` }}
-                            className="absolute top-0 h-full w-0.5 bg-red-500"
-                          ></div>
-                        )}
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-600">
-                        <span>Progresso: {challenge.progresso_atual.toFixed(2)}%</span>
-                        <span>Meta: {challenge.meta?.percentual}%</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex justify-around text-gray-500 text-xs">
-                    <p>Início: {new Date(challenge.data_inicio).toLocaleDateString()}</p>
-                    <p>Fim: {new Date(challenge.data_fim).toLocaleDateString()}</p>
-                  </div>
-                  {challenge.status && (
-                    <p className="mt-2 text-center font-medium text-green-600">
-                      Status: {challenge.status}
+        {/* Seção de Desafios */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-bold mb-4">Desafios Ativos</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {challenges.map((challenge) => (
+              <div key={challenge.id} className="bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold text-lg">{challenge.nome}</h3>
+                <p className="text-gray-600 text-sm mt-2">{challenge.descricao}</p>
+                
+                {challenge.meta && (
+                  <div className="mt-2">
+                    {challenge.tipo === 'desempenho' && (
+                      <p className="text-sm">
+                        Categoria: {challenge.meta.categoria}
+                      </p>
+                    )}
+                    <p className="text-sm font-medium">
+                      Meta: {challenge.meta.percentual ? `${challenge.meta.percentual}%` : 
+                            challenge.meta.quantidade ? `${challenge.meta.quantidade} questões` : ''}
                     </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-600">
-              Nenhum desafio semanal ativo no momento.
-            </div>
-          )}
-        </div>
+                  </div>
+                )}
 
-        {/* Seção: Conquistas */}
-        <div>
+                <div className="mt-4">
+                  <div className="h-2 bg-gray-200 rounded-full">
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all"
+                      style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span>{challenge.progresso_atual.toFixed(1)}%</span>
+                    <span>{formatDate(challenge.data_fim)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Seção de Conquistas */}
+        <section>
           <h2 className="text-2xl font-bold mb-4">Conquistas</h2>
-          {achievements.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {achievements.map(ach => (
-                <div
-                  key={ach.id}
-                  className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-all"
-                >
-                  <img
-                    src={`/icons/${ach.icone}.svg`}
-                    alt={ach.nome}
-                    className="h-16 w-16 mx-auto"
-                  />
-                  <h3 className="mt-4 text-center font-semibold text-xl">{ach.nome}</h3>
-                  <p className="mt-2 text-center text-gray-600 text-sm">{ach.descricao}</p>
-                  <p className="mt-1 text-center text-gray-500 text-xs">
-                    Conquistado em: {new Date(ach.data_conquista).toLocaleDateString()}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {achievements.map((achievement) => (
+              <div key={achievement.id} className="bg-white p-4 rounded-lg shadow">
+                <div className="text-center">
+                  <span className="text-4xl">🏆</span>
+                  <h3 className="font-semibold mt-2">{achievement.nome}</h3>
+                  <p className="text-gray-600 text-sm mt-1">{achievement.descricao}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Conquistado em: {formatDate(achievement.data_conquista)}
                   </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-600">
-              Nenhuma conquista encontrada.
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );
