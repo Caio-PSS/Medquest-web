@@ -15,6 +15,7 @@ interface Challenge {
   data_inicio: string;
   data_fim: string;
   status?: string;
+  progresso_atual: number;
 }
 
 // Definindo a interface para as conquistas
@@ -93,6 +94,29 @@ const GamificationPage = () => {
                       {challenge.meta.percentual ? `- ${challenge.meta.percentual}%` : ''}
                     </div>
                   )}
+                  {/* Barra de Progresso */}
+                  <div className="mt-4">
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-2 mb-2 text-xs flex rounded-full bg-gray-200">
+                        {/* Preenchimento do progresso */}
+                        <div
+                          style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
+                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 rounded-full"
+                        ></div>
+                        {/* Marcação da meta */}
+                        {challenge.meta?.percentual && (
+                          <div
+                            style={{ left: `${challenge.meta.percentual}%` }}
+                            className="absolute top-0 h-full w-0.5 bg-red-500"
+                          ></div>
+                        )}
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Progresso: {challenge.progresso_atual.toFixed(2)}%</span>
+                        <span>Meta: {challenge.meta?.percentual}%</span>
+                      </div>
+                    </div>
+                  </div>
                   <div className="mt-2 flex justify-around text-gray-500 text-xs">
                     <p>Início: {new Date(challenge.data_inicio).toLocaleDateString()}</p>
                     <p>Fim: {new Date(challenge.data_fim).toLocaleDateString()}</p>
