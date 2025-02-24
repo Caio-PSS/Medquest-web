@@ -1,17 +1,21 @@
+// src/components/AuthCheck.tsx
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AuthCheck = () => {
-  const { logout, authToken, isLoading } = useAuth(); // Adicione isLoading
+  const { logout, authToken, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !authToken) { // Só redirecione após o carregamento
+    // Se já estiver carregando, não faz nada.
+    // Se não houver token e não estiver na página de login, redireciona.
+    if (!isLoading && !authToken && location.pathname !== '/login') {
       logout();
-      navigate('/login');
+      navigate('/login', { replace: true });
     }
-  }, [authToken, logout, navigate, isLoading]); // Adicione isLoading às dependências
+  }, [authToken, isLoading, logout, navigate, location.pathname]);
 
   return null;
 };
