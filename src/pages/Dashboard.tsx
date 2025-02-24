@@ -10,6 +10,7 @@ import {
   Brain,
   Target
 } from 'lucide-react';
+import { StarIcon, CheckBadgeIcon, FireIcon } from '@heroicons/react/24/solid';
 
 type StatsType = {
   total: number;
@@ -18,10 +19,32 @@ type StatsType = {
   tempoMedio: number;
 };
 
+type Challenge = {
+  id: number;
+  nome: string;
+  tipo: 'desempenho' | 'quantidade';
+  percentual_meta?: number;
+  progresso_atual: number;
+  status?: string;
+};
+
+type Achievement = {
+  id: number;
+  level?: number;
+};
+
+const achievementStyles = {
+  1: { bgColor: 'bg-gray-200', textColor: 'text-gray-800', Icon: StarIcon },
+  2: { bgColor: 'bg-blue-200', textColor: 'text-blue-800', Icon: CheckBadgeIcon },
+  3: { bgColor: 'bg-yellow-200', textColor: 'text-yellow-800', Icon: FireIcon }
+};
+
 const Dashboard = () => {
   const { authToken, isLoading } = useAuth();
   const [stats, setStats] = useState<StatsType | null>(null);
   const [range, setRange] = useState('semestre'); // Valor padrão: semestre
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   const rangeOptions = [
     { label: 'Semana', value: 'week' },
@@ -52,6 +75,35 @@ const Dashboard = () => {
       fetchStats();
     }
   }, [authToken, range]);
+
+  useEffect(() => {
+    const fetchGamificationData = async () => {
+      try {
+        const [challengesRes, achievementsRes] = await Promise.all([
+          fetch('https://medquest-floral-log-224.fly.dev/api/gamification/challenges', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          }),
+          fetch('https://medquest-floral-log-224.fly.dev/api/gamification/achievements', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          })
+        ]);
+        
+        const [challengesData, achievementsData] = await Promise.all([
+          challengesRes.json(),
+          achievementsRes.json()
+        ]);
+        
+        setChallenges(challengesData);
+        setAchievements(achievementsData);
+      } catch (error) {
+        console.error("Error fetching gamification data:", error);
+      }
+    };
+  
+    if (authToken) {
+      fetchGamificationData();
+    }
+  }, [authToken]);
 
   if (isLoading) {
     return (
@@ -182,6 +234,68 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
+        {/* Prévia de Desafios e Conquistas */}
+          <div className="space-y-6">
+            {/* Seção de Desafios */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Desafios em Progresso</h2>
+              {challenges.length > 0 ? (
+                <div className="space-y-4">
+                  {challenges.map((challenge) => (
+                    <div key={challenge.id} className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium">{challenge.nome}</span>
+                        <span className={`${challenge.status === 'concluido' ? 'text-green-600' : 'text-gray-600'}`}>
+                          {challenge.progresso_atual.toFixed(0)}%
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-200 rounded-full relative">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            challenge.status === 'concluido' ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
+                        />
+                        {challenge.tipo === 'desempenho' && challenge.percentual_meta !== undefined && (
+                          <div
+                            className="absolute top-0 h-2 w-0.5 bg-red-500"
+                            style={{ left: `${challenge.percentual_meta}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-2">Nenhum desafio ativo no momento.</p>
+              )}
+            </div>
+
+            {/* Seção de Troféus */}
+            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Troféus Conquistados</h2>
+              {achievements.length > 0 ? (
+                <div className="grid grid-cols-4 gap-3">
+                  {achievements.map((achievement) => {
+                    const level = achievement.level || ((achievement.id % 3) + 1);
+                    const style = achievementStyles[level as keyof typeof achievementStyles] || achievementStyles[1];
+                    const Icon = style.Icon;
+                    
+                    return (
+                      <div
+                        key={achievement.id}
+                        className={`p-2 rounded-lg ${style.bgColor} flex items-center justify-center`}
+                      >
+                        <Icon className={`w-6 h-6 ${style.textColor}`} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-2">Nenhum troféu conquistado ainda.</p>
+              )}
+            </div>
+          </div>
       </div>
     </div>
   );
