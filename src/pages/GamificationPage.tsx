@@ -218,11 +218,23 @@ const GamificationPage = () => {
                       <span>Progresso</span>
                       <span>{challenge.progresso_atual.toFixed(1)}%</span>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full">
+                    
+                    {/* Container da barra de progresso (adicionar relative) */}
+                    <div className="h-2 bg-gray-200 rounded-full relative">
+                      
+                      {/* Barra de progresso (azul) */}
                       <div
-                        className="h-full bg-blue-500 rounded-full transition-all"
+                        className="h-full bg-blue-500 rounded-full transition-all absolute top-0 left-0"
                         style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
                       />
+                      
+                      {/* Marcação da meta (vermelha) - apenas para desafios de desempenho */}
+                      {challenge.tipo === 'desempenho' && challenge.percentual_meta && (
+                        <div
+                          className="absolute top-0 h-2 w-0.5 bg-red-500 z-10"
+                          style={{ left: `${challenge.percentual_meta}%` }}
+                        />
+                      )}
                     </div>
                     <div className="flex justify-between text-xs text-gray-500 mt-2">
                       <span>Início: {formatDate(challenge.data_inicio)}</span>
