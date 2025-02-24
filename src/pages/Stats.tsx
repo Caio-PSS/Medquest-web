@@ -42,15 +42,6 @@ interface SubareaProgress {
   percentual_acerto: string;
 }
 
-interface IndividualTimeAccuracyData {
-    historico_id: number;
-    questao_id: number;
-    date: string;
-    resultado: 'Correta' | 'Incorreta';
-    tempo_resposta: number;
-}
-
-
 const Stats = () => {
   const { authToken } = useAuth();
   const [overviewData, setOverviewData] = useState<OverviewStats | null>(null);
@@ -69,8 +60,6 @@ const Stats = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [individualTimeAccuracyData, setIndividualTimeAccuracyData] = useState<IndividualTimeAccuracyData[]>([]);
-
 
   // Função para calcular média móvel (janela de 3 pontos)
   const calculateMovingAverage = (data: number[], windowSize: number): number[] => {
@@ -84,7 +73,7 @@ const Stats = () => {
     return averages;
   };
 
-  const fetchData = useCallback(async (filters: StatsFilters, activeTabName: string) => {
+  const fetchData = useCallback(async (filters: StatsFilters) => {
     try {
       setLoading(true);
       setError(null);
@@ -95,7 +84,7 @@ const Stats = () => {
       });
       
       // Buscando overview, categorias, subáreas e timeline em paralelo
-      const [overviewRes, categoryRes, subareaRes, timelineRes, individualTimeAccuracyRes] = await Promise.all([
+      const [overviewRes, categoryRes, subareaRes, timelineRes] = await Promise.all([
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/overview?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         }),
@@ -108,12 +97,9 @@ const Stats = () => {
         fetch(`https://medquest-floral-log-224.fly.dev/api/stats/timeline?${params}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         }),
-        activeTabName === 'timeVsAccuracy' ?  fetch(`https://medquest-floral-log-224.fly.dev/api/stats/timeVsAccuracy?${params}`, { //Condicional fetch
-          headers: { Authorization: `Bearer ${authToken}` },
-        }) : Promise.resolve({ ok: true, json: () => Promise.resolve([])}) // Return empty promise if not timeVsAccuracy
       ]);
 
-      if (!overviewRes.ok || !categoryRes.ok || !subareaRes.ok || !timelineRes.ok || (activeTabName === 'timeVsAccuracy' && !individualTimeAccuracyRes.ok)) { // Check individualTimeAccuracyRes.ok conditionally
+      if (!overviewRes.ok || !categoryRes.ok || !subareaRes.ok || !timelineRes.ok) {
         throw new Error('Erro ao buscar dados. Verifique sua conexão ou tente novamente.');
       }
 
@@ -121,16 +107,11 @@ const Stats = () => {
       const categories = await categoryRes.json();
       const subareas = await subareaRes.json();
       const timeline = await timelineRes.json();
+
       setOverviewData(overview);
       setCategoryData(categories);
       setSubareaData(subareas);
       setTimelineData(timeline);
-
-      if(activeTabName === 'timeVsAccuracy') { // Conditionally process individualTimeAccuracyRes
-        const individualTimeAccuracy = await individualTimeAccuracyRes.json();
-        setIndividualTimeAccuracyData(individualTimeAccuracy);
-      }
-
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Erro desconhecido ao buscar dados');
@@ -145,8 +126,8 @@ const Stats = () => {
       range: timeRange,
       ...(timeRange === 'custom' && { startDate, endDate }),
     };
-    fetchData(filters, activeTab); // Pass activeTab to fetchData
-  }, [authToken, timeRange, startDate, endDate, fetchData, activeTab]); // Include activeTab in dependency array
+    fetchData(filters);
+  }, [authToken, timeRange, startDate, endDate, fetchData]);
 
   // Cálculo do percentual de acerto para cada data da timeline
   const timelinePercentageData = timelineData.map(d => {
@@ -286,7 +267,7 @@ const Stats = () => {
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
           <button 
-            onClick={() => fetchData({ range: timeRange, ...(timeRange === 'custom' && { startDate, endDate }) }, activeTab)} // Pass activeTab here
+            onClick={() => fetchData({ range: timeRange, ...(timeRange === 'custom' && { startDate, endDate }) })}
             className="ml-4 underline"
           >
             Tentar novamente
@@ -433,15 +414,16 @@ const Stats = () => {
             </div>
           )}
 
-          {activeTab === 'timeVsAccuracy' && individualTimeAccuracyData.length > 0 && (
+          {activeTab === 'timeVsAccuracy' && timelineData.length > 0 && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
               <ScatterChart
                 data={{
                   datasets: [{
-                    label: 'Tempo vs Acerto (Questões Individuais)',
-                    data: individualTimeAccuracyData.map(d => {
-                      const percentage = d.resultado === 'Correta' ? 100 : 0;
-                      return { x: d.tempo_resposta, y: percentage };
+                    label: 'Tempo vs Taxa de Acerto',
+                    data: timelineData.map(d => {
+                      const total = d.correct + d.incorrect;
+                      const percentage = total ? ((d.correct / total) * 100) : 0;
+                      return { x: d.avg_time, y: percentage };
                     }),
                     backgroundColor: '#FF9800'
                   }]
@@ -450,10 +432,10 @@ const Stats = () => {
                   responsive: true,
                   scales: {
                     x: {
-                      title: { display: true, text: 'Tempo de Resposta (s)' },
+                      title: { display: true, text: 'Tempo Médio (s)' },
                     },
                     y: {
-                      title: { display: true, text: 'Acerto (%) (Por Questão)' }
+                      title: { display: true, text: 'Taxa de Acerto (%)' }
                     }
                   }
                 }}
