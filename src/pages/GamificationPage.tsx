@@ -8,11 +8,9 @@ interface Challenge {
   nome: string;
   descricao: string;
   tipo: 'desempenho' | 'quantidade';
-  meta?: {
-    categoria?: string;
-    percentual?: number;
-    quantidade?: number;
-  };
+  categoria_meta?: string;
+  percentual_meta?: number;
+  quantidade_meta?: number;
   data_inicio: string;
   data_fim: string;
   status?: string;
@@ -200,22 +198,20 @@ const GamificationPage = () => {
                     </span>
                   </div>
 
-                  {challenge.meta && (
-                    <div className="mt-3">
-                      {challenge.tipo === 'desempenho' && (
-                        <p className="text-sm">
-                          <span className="font-medium">Categoria:</span> {challenge.meta.categoria}
-                        </p>
-                      )}
+                  <div className="mt-3">
+                    {challenge.tipo === 'desempenho' && challenge.categoria_meta && (
                       <p className="text-sm">
-                        <span className="font-medium">Meta:</span> {
-                          challenge.meta.percentual != null 
-                            ? `${challenge.meta.percentual}% de acerto` 
-                            : `${challenge.meta.quantidade} questões`
-                        }
-</p>
-                    </div>
-                  )}
+                        <span className="font-medium">Categoria:</span> {challenge.categoria_meta}
+                      </p>
+                    )}
+                    <p className="text-sm">
+                      <span className="font-medium">Meta:</span> {
+                        challenge.tipo === 'desempenho'
+                          ? `${challenge.percentual_meta}% de acerto`
+                          : `${challenge.quantidade_meta} questões`
+                      }
+                    </p>
+                  </div>
 
                   <div className="mt-4">
                     <div className="flex justify-between text-sm mb-1">
