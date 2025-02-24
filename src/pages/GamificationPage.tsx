@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { StarIcon, CheckBadgeIcon, FireIcon } from '@heroicons/react/24/solid';
 
 interface Challenge {
   id: number;
@@ -18,12 +19,64 @@ interface Challenge {
   progresso_atual: number;
 }
 
+interface AchievementStyle {
+  bgColor: string;
+  textColor: string;
+  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  label: string;
+}
+
 interface Achievement {
   id: number;
   nome: string;
   descricao: string;
   data_conquista: string;
+  // Caso o backend passe um nível, ele pode ser utilizado; senão, será calculado no frontend.
+  level?: number;
 }
+
+// Mapeamento de estilos dinâmicos para cada nível
+const achievementStyles: Record<number, AchievementStyle> = {
+  1: {
+    bgColor: 'bg-gray-200',
+    textColor: 'text-gray-800',
+    Icon: StarIcon,
+    label: 'Iniciante'
+  },
+  2: {
+    bgColor: 'bg-blue-200',
+    textColor: 'text-blue-800',
+    Icon: CheckBadgeIcon,
+    label: 'Intermediário'
+  },
+  3: {
+    bgColor: 'bg-yellow-200',
+    textColor: 'text-yellow-800',
+    Icon: FireIcon,
+    label: 'Avançado'
+  }
+};
+
+// Componente para renderizar uma conquista com estilo dinâmico
+const AchievementCard: React.FC<{ achievement: Achievement }> = ({ achievement }) => {
+  // Exemplo: se o nível não for informado, calcula um nível simples com base no id (apenas para demonstração)
+  const level = achievement.level || ((achievement.id % 3) + 1);
+  const style = achievementStyles[level] || achievementStyles[1];
+  const Icon = style.Icon;
+
+  return (
+    <div className={`${style.bgColor} p-4 rounded-lg shadow flex flex-col items-center`}>
+      <Icon className={`h-10 w-10 ${style.textColor}`} />
+      <h3 className={`mt-2 text-lg font-bold ${style.textColor}`}>
+        {achievement.nome} {style.label && `- ${style.label}`}
+      </h3>
+      <p className={`text-sm ${style.textColor} mt-1`}>{achievement.descricao}</p>
+      <p className="text-xs text-gray-500 mt-2">
+        Conquistado em: {new Date(achievement.data_conquista).toLocaleDateString('pt-BR')}
+      </p>
+    </div>
+  );
+};
 
 const GamificationPage = () => {
   const { authToken } = useAuth();
@@ -68,7 +121,6 @@ const GamificationPage = () => {
 
         setChallenges(challengesData);
         setAchievements(achievementsData);
-
       } catch (err) {
         console.error('Erro:', err);
         setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -200,16 +252,7 @@ const GamificationPage = () => {
           {achievements.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {achievements.map((achievement) => (
-                <div key={achievement.id} className="bg-white p-4 rounded-lg shadow">
-                  <div className="text-center">
-                    <span className="text-4xl">🏆</span>
-                    <h3 className="font-semibold mt-2">{achievement.nome}</h3>
-                    <p className="text-gray-600 text-sm mt-1">{achievement.descricao}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Conquistado em: {formatDate(achievement.data_conquista)}
-                    </p>
-                  </div>
-                </div>
+                <AchievementCard key={achievement.id} achievement={achievement} />
               ))}
             </div>
           ) : (
