@@ -45,6 +45,7 @@ const Dashboard = () => {
   const [range, setRange] = useState('semestre'); // Valor padrão: semestre
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [progressCheckedInSession, setProgressCheckedInSession] = useState(false); // 🚩 Flag de sessão
 
   const rangeOptions = [
     { label: 'Semana', value: 'week' },
@@ -79,6 +80,14 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchGamificationData = async () => {
       try {
+        // 🚩 Verificar flag antes de chamar check-progress
+        if (!progressCheckedInSession && authToken) {
+          await fetch('https://medquest-floral-log-224.fly.dev/api/gamification/check-progress', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${authToken}` }
+          });
+          setProgressCheckedInSession(true); // 🚩 Definir flag como true após a primeira chamada
+        }
         const [challengesRes, achievementsRes] = await Promise.all([
           fetch('https://medquest-floral-log-224.fly.dev/api/gamification/challenges', {
             headers: { Authorization: `Bearer ${authToken}` }
