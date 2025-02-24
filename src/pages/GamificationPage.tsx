@@ -209,11 +209,11 @@ const GamificationPage = () => {
                       )}
                       <p className="text-sm">
                         <span className="font-medium">Meta:</span> {
-                          challenge.meta.percentual 
+                          challenge.meta.percentual != null 
                             ? `${challenge.meta.percentual}% de acerto` 
                             : `${challenge.meta.quantidade} questões`
                         }
-                      </p>
+</p>
                     </div>
                   )}
 
