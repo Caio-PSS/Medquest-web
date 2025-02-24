@@ -10,24 +10,8 @@ import Register from './components/Register';
 import AuthCheck from './components/AuthCheck';
 import GamificationPage from './pages/GamificationPage';
 import { Analytics } from '@vercel/analytics/react'; // Import Analytics
-import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
 function App() {
-
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const isPWA =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone;
-
-    if (isPWA && location.pathname === "/") {
-      navigate("/login", { replace: true });
-    }
-  }, [location, navigate]);
-
   return (
     <BrowserRouter>
       <AuthProvider>
