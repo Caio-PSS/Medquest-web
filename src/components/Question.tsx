@@ -25,13 +25,13 @@ interface QuestionProps {
   autoReadEnabled: boolean;
   readText: (text: string, type: "question" | "explanation", preload?: boolean) => void;
   isReading: boolean;
-  // Controles de áudio para questão e explicação:
   toggleQuestionAudio: () => void;
   replayQuestionAudio: () => void;
   toggleExplanationAudio: () => void;
   replayExplanationAudio: () => void;
   questionAudioPlaying: boolean;
   explanationAudioPlaying: boolean;
+  audioLoading: boolean;
 }
 
 export default function Question({
@@ -47,13 +47,12 @@ export default function Question({
   replayExplanationAudio,
   questionAudioPlaying,
   explanationAudioPlaying,
+  audioLoading,
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
-  // Flag para evitar que o auto leia repetidamente na mesma etapa
-  const [autoTriggered, setAutoTriggered] = useState(false);
 
   const imageProps = data.image_url
     ? {
@@ -97,25 +96,23 @@ export default function Question({
     return data[alternativeKey] || 'Alternativa não encontrada';
   };
 
-  // Quando a etapa muda (por exemplo, de questão para feedback), reinicia a flag do auto
+  // Quando não há feedback, se "Leitura auto" estiver ativa e não houver leitura em andamento,
+  // inicia automaticamente a leitura da questão (como se tivesse clicado no botão Replay).
   useEffect(() => {
-    setAutoTriggered(false);
-  }, [showFeedback]);
-
-  // Auto leitura: se o modo "Leitura auto" estiver ativo e ainda não tiver sido disparado nesta etapa, inicia a leitura automaticamente.
-  useEffect(() => {
-    if (autoReadEnabled && !autoTriggered && !isReading) {
-      if (!showFeedback) {
-        // Inicia a leitura da questão a partir do início (como se fosse um replay)
-        replayQuestionAudio();
-      } else if (showFeedback && data.explicacao) {
-        replayExplanationAudio();
-      }
-      setAutoTriggered(true);
+    if (autoReadEnabled && !showFeedback && !isReading) {
+      replayQuestionAudio();
     }
-  }, [autoReadEnabled, autoTriggered, isReading, showFeedback, data.explicacao, replayQuestionAudio, replayExplanationAudio]);
+  }, [autoReadEnabled, showFeedback, isReading, replayQuestionAudio]);
 
-  // Pré-carrega a explicação (sem iniciar a reprodução) para evitar delay, se "Leitura auto" estiver ativo
+  // Quando o feedback é exibido, se "Leitura auto" estiver ativa e houver explicação,
+  // inicia automaticamente a leitura da explicação.
+  useEffect(() => {
+    if (autoReadEnabled && showFeedback && data.explicacao && !isReading) {
+      replayExplanationAudio();
+    }
+  }, [autoReadEnabled, showFeedback, data.explicacao, isReading, replayExplanationAudio]);
+
+  // Pré-carrega a explicação para evitar delay se "Leitura auto" estiver ativa
   useEffect(() => {
     if (autoReadEnabled && data.explicacao) {
       readText(data.explicacao, "explanation", true);
@@ -132,27 +129,39 @@ export default function Question({
               Questão {data.id}
             </span>
           </span>
-          {/* Botão Play/Pause para questão */}
           <button
             onClick={toggleQuestionAudio}
+            disabled={audioLoading}
             title="Play/Pause Questão"
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
           >
-            {questionAudioPlaying ? (
+            {audioLoading ? (
+              <svg className="animate-spin h-6 w-6 text-gray-300" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : questionAudioPlaying ? (
               <PauseCircle className="w-6 h-6" />
             ) : (
               <PlayCircle className="w-6 h-6" />
             )}
           </button>
         </div>
-        {/* Botão Replay para questão */}
         <div>
           <button
             onClick={replayQuestionAudio}
+            disabled={audioLoading}
             title="Replay Questão"
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
           >
-            <RotateCcw className="w-6 h-6" />
+            {audioLoading ? (
+              <svg className="animate-spin h-6 w-6 text-gray-300" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <RotateCcw className="w-6 h-6" />
+            )}
           </button>
         </div>
       </div>
@@ -192,9 +201,7 @@ export default function Question({
         </div>
       )}
 
-      <p className="text-gray-200 text-lg mb-8 leading-relaxed">
-        {data.enunciado}
-      </p>
+      <p className="text-gray-200 text-lg mb-8 leading-relaxed">{data.enunciado}</p>
 
       <div className="space-y-4">
         {['A', 'B', 'C', 'D'].map((opt) => {
@@ -286,25 +293,37 @@ export default function Question({
                   <Lightbulb className="w-5 h-5 inline-block" /> Explicação:
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Botão Play/Pause para explicação */}
                   <button
                     onClick={toggleExplanationAudio}
+                    disabled={audioLoading}
                     title="Play/Pause Explicação"
-                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
                   >
-                    {explanationAudioPlaying ? (
+                    {audioLoading ? (
+                      <svg className="animate-spin h-6 w-6 text-gray-300" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : explanationAudioPlaying ? (
                       <PauseCircle className="w-6 h-6" />
                     ) : (
                       <PlayCircle className="w-6 h-6" />
                     )}
                   </button>
-                  {/* Botão Replay para explicação */}
                   <button
                     onClick={replayExplanationAudio}
+                    disabled={audioLoading}
                     title="Replay Explicação"
-                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
                   >
-                    <RotateCcw className="w-6 h-6" />
+                    {audioLoading ? (
+                      <svg className="animate-spin h-6 w-6 text-gray-300" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <RotateCcw className="w-6 h-6" />
+                    )}
                   </button>
                 </div>
               </div>
