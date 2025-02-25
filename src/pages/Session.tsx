@@ -44,6 +44,10 @@ const Session = () => {
   const [includeRepeats, setIncludeRepeats] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
+
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [currentAudioData, setCurrentAudioData] = useState<string | null>(null);
+  const [isReading, setIsReading] = useState(false);
   
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
@@ -224,18 +228,34 @@ const Session = () => {
   // Função que chama a nossa API serverless para ler o texto
   async function readText(text: string) {
     try {
+      // Para qualquer áudio atual
+      if (currentAudio) {
+        currentAudio.pause();
+        setCurrentAudio(null);
+      }
+  
+      setIsReading(true);
       const response = await fetch('/api/readText', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, language: 'pt-BR', voice: 'Ricardo' }),
       });
+      
       const data = await response.json();
       if (data.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
+        const audio = new Audio(audioUrl);
+        
+        // Armazena dados do áudio para repetição
+        setCurrentAudioData(audioUrl);
+        setCurrentAudio(audio);
+        
         audio.play();
+        audio.onended = () => setIsReading(false);
       }
     } catch (error) {
       console.error('Erro ao ler o texto:', error);
+      setIsReading(false);
     }
   }
 
@@ -360,15 +380,48 @@ const Session = () => {
                   Questão {currentQuestion + 1} de {questions.length}
                 </span>
                 <div className="flex items-center gap-4">
+                  {/* Botão de Repetir (visível apenas quando habilitado) */}
+                  {autoReadEnabled && currentAudioData && (
+                    <button
+                      onClick={() => {
+                        if (currentAudioData) {
+                          const audio = new Audio(currentAudioData);
+                          setCurrentAudio(audio);
+                          audio.play();
+                        }
+                      }}
+                      className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                      title="Repetir leitura"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-6 h-6"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/>
+                      </svg>
+                    </button>
+                  )}                  
                   {/* Botão de TTS Estilizado */}
                   <button
-                    onClick={() => setAutoReadEnabled(prev => !prev)}
+                    onClick={() => {
+                      if (autoReadEnabled) {
+                        currentAudio?.pause();
+                        setCurrentAudio(null);
+                      }
+                      setAutoReadEnabled(!autoReadEnabled);
+                    }}
                     className={`p-2 rounded-full transition-colors ${
                       autoReadEnabled 
                         ? 'bg-green-600 hover:bg-green-500 text-white' 
                         : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                     }`}
-                    title="Leitura automática"
+                    disabled={isReading}
                   >
                     <svg 
                       xmlns="http://www.w3.org/2000/svg" 
@@ -424,6 +477,15 @@ const Session = () => {
                   onNext={handleNextQuestion}
                   autoReadEnabled={autoReadEnabled}
                   readText={readText}
+                  isReading={isReading}
+                  currentAudioData={currentAudioData}
+                  onRepeat={() => {
+                    if (currentAudioData) {
+                      const audio = new Audio(currentAudioData);
+                      setCurrentAudio(audio);
+                      audio.play();
+                    }
+                  }}
                 />
               )
             )}

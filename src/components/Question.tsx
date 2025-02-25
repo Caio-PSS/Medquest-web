@@ -21,9 +21,21 @@ interface QuestionProps {
   onNext: () => void;
   autoReadEnabled: boolean;
   readText: (text: string) => void;
+  isReading: boolean;
+  currentAudioData: string | null;
+  onRepeat: () => void;
 }
 
-export default function Question({ data, onConfirm, onNext, autoReadEnabled, readText }: QuestionProps) {
+export default function Question({ 
+  data, 
+  onConfirm, 
+  onNext, 
+  autoReadEnabled, 
+  readText,
+  isReading,
+  currentAudioData,
+  onRepeat
+}: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -40,19 +52,31 @@ export default function Question({ data, onConfirm, onNext, autoReadEnabled, rea
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
 
-  // Ao montar, se o modo auto-leitura estiver ativado, lê o enunciado
-  useEffect(() => {
-    if (autoReadEnabled) {
-      readText(data.enunciado);
-    }
-  }, [data.enunciado, autoReadEnabled, readText]);
+  // Construir texto completo com alternativas
+  const getFullQuestionText = useCallback(() => {
+    const alternatives = [
+      data.alternativa_a,
+      data.alternativa_b,
+      data.alternativa_c,
+      data.alternativa_d
+    ]
+      .filter(Boolean)
+      .map((alt, index) => `Alternativa ${String.fromCharCode(65 + index)}: ${alt}`)
+      .join('. ');
 
-  // Quando o feedback for exibido, se houver explicação, dispara a leitura
+    return `${data.enunciado}. ${alternatives}`;
+  }, [data]);
+
+  // Controle de leitura automática
   useEffect(() => {
-    if (autoReadEnabled && showFeedback && data.explicacao) {
-      readText(data.explicacao);
+    if (autoReadEnabled && !isReading) {
+      if (showFeedback && data.explicacao) {
+        readText(data.explicacao);
+      } else if (!showFeedback) {
+        readText(getFullQuestionText());
+      }
     }
-  }, [showFeedback, data.explicacao, autoReadEnabled, readText]);
+  }, [autoReadEnabled, showFeedback, data.explicacao, getFullQuestionText, isReading, readText]);
 
   const handleConfirmAnswer = () => {
     if (!data?.resposta) {
@@ -76,8 +100,29 @@ export default function Question({ data, onConfirm, onNext, autoReadEnabled, rea
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
       <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
         <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+        
+        {/* Botão de Repetir */}
+        {autoReadEnabled && currentAudioData && (
+          <button
+            onClick={onRepeat}
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            title="Repetir leitura"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/>
+            </svg>
+          </button>
+        )}
       </h2>
-
       {imageProps && (
         <div className="mb-8 flex justify-center">
           <div
