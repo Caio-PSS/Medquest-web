@@ -33,6 +33,7 @@ const Session = () => {
   const { authToken, authUser } = useAuth();
   const navigate = useNavigate();
 
+  // Estados de configuração e controle
   const [categories, setCategories] = useState<Category[]>([]);
   const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -45,10 +46,15 @@ const Session = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
 
+  // Estados para controle do áudio e TTS
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [currentAudioData, setCurrentAudioData] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
-  
+  const [audioPausedTime, setAudioPausedTime] = useState(0);
+
+  // Controle da leitura automática (TTS)
+  const [autoReadEnabled, setAutoReadEnabled] = useState(false);
+
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
@@ -57,9 +63,6 @@ const Session = () => {
     wrongComments: [] as string[],
     correctComments: [] as string[],
   });
-
-  // Estado para controle de leitura automática (desativado por padrão)
-  const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
   // Atualiza o tick a cada 1 segundo
   useEffect(() => {
@@ -119,7 +122,7 @@ const Session = () => {
   const handleSelectAllSubtopics = (category: string, subtopics: string[]) => {
     setSelections(prev => {
       const otherCategories = prev.filter(s => s.categoria !== category);
-      const allSelected = subtopics.every(sub => 
+      const allSelected = subtopics.every(sub =>
         prev.some(s => s.categoria === category && s.subtema === sub)
       );
       
@@ -246,7 +249,7 @@ const Session = () => {
         const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
         const audio = new Audio(audioUrl);
         
-        // Armazena dados do áudio para repetição
+        // Armazena dados do áudio para controle de reprodução
         setCurrentAudioData(audioUrl);
         setCurrentAudio(audio);
         
@@ -258,6 +261,29 @@ const Session = () => {
       setIsReading(false);
     }
   }
+
+  // Lida com clique no botão TTS (Play/Pause/Resume)
+  const handleTTSButtonClick = () => {
+    // Se o TTS não estiver ativado, ativa-o
+    if (!autoReadEnabled) {
+      setAutoReadEnabled(true);
+      return;
+    }
+    // Se houver áudio, controla play/pause
+    if (currentAudio) {
+      if (!currentAudio.paused) {
+        currentAudio.pause();
+        setAudioPausedTime(currentAudio.currentTime);
+      } else {
+        const resumeTime = Math.max(0, audioPausedTime - 2);
+        currentAudio.currentTime = resumeTime;
+        currentAudio.play();
+      }
+    }
+  };
+
+  // Define se o áudio está tocando
+  const isPlaying = currentAudio ? !currentAudio.paused : false;
 
   return (
       <div className="p-4 min-h-screen bg-gray-950">
@@ -380,79 +406,25 @@ const Session = () => {
                   Questão {currentQuestion + 1} de {questions.length}
                 </span>
                 <div className="flex items-center gap-4">
-                  {/* Botão de Repetir (visível apenas quando habilitado) */}
-                  {autoReadEnabled && currentAudioData && (
-                    <button
-                      onClick={() => {
-                        if (currentAudio) {
-                          currentAudio.pause();
-                        }
-                        if (currentAudioData) {
-                          const audio = new Audio(currentAudioData);
-                          setCurrentAudio(audio);
-                          audio.play();
-                        }
-                      }}
-                      className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                      title="Repetir leitura"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-6 h-6"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M21.5 2v6h-6M2.5 22v-6h6M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/>
-                      </svg>
-                    </button>
-                  )}                  
-                  {/* Botão de TTS Estilizado */}
                   <button
-                    onClick={() => {
-                      if (autoReadEnabled) {
-                        currentAudio?.pause();
-                        setCurrentAudio(null);
-                      }
-                      setAutoReadEnabled(!autoReadEnabled);
-                    }}
-                    className={`p-2 rounded-full transition-colors ${
-                      autoReadEnabled 
-                        ? 'bg-green-600 hover:bg-green-500 text-white' 
-                        : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                    }`}
+                    onClick={handleTTSButtonClick}
+                    className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-md"
                     disabled={isReading}
                   >
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="w-6 h-6" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round"
-                    >
-                      {autoReadEnabled ? (
-                        <>
-                          <rect x="6" y="4" width="4" height="16" />
-                          <rect x="14" y="4" width="4" height="16" />
-                        </>
-                      ) : (
-                        <>
-                          <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                          <circle cx="12" cy="14" r="4" />
-                          <line x1="12" y1="6" x2="12" y2="6" />
-                        </>
-                      )}
-                    </svg>
-                    <span className="sr-only">Leitura Automática</span>
+                    {isPlaying ? (
+                      // Ícone de pause
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
+                      </svg>
+                    ) : (
+                      // Ícone de play
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="5,3 19,12 5,21" />
+                      </svg>
+                    )}
+                    <span className="sr-only">TTS</span>
                   </button>
-  
-                  {/* Contadores de Tempo */}
                   <div className="flex gap-4">
                     <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">
                       <span className="font-semibold">Questão:</span>
@@ -481,21 +453,13 @@ const Session = () => {
                   autoReadEnabled={autoReadEnabled}
                   readText={readText}
                   isReading={isReading}
-                  currentAudioData={currentAudioData}
-                  onRepeat={() => {
-                    if (currentAudioData) {
-                      const audio = new Audio(currentAudioData);
-                      setCurrentAudio(audio);
-                      audio.play();
-                    }
-                  }}
                 />
               )
             )}
           </div>
         )}
      </div>
-    );
+  );
 };
 
 export default Session;
