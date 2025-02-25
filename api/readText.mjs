@@ -1,5 +1,3 @@
-// api/readText.mjs
-import { VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import { createClient } from 'redis';
 
