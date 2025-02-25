@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly';
 import { createClient } from 'redis';
 
 const redisConfig = {
@@ -21,6 +21,11 @@ async function getRedisClient() {
 }
 
 const GLOBAL_LIMIT = 1000000;
+
+const voiceMap = {
+  'pt-BR-Neural2': 'Camila',
+  // Adicione mais mapeamentos conforme necessário
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -50,22 +55,29 @@ export default async function handler(req, res) {
 
     await client.incrBy('totalCharsUsed', text.length);
 
-    const ttsResponse = await axios.post(
-      'https://texttospeech.googleapis.com/v1/text:synthesize',
-      {
-        input: { text },
-        voice: { languageCode: language, name: voice },
-        audioConfig: { audioEncoding: 'MP3' }
-      },
-      {
-        params: { key: process.env.GOOGLE_API_KEY },
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 10000
-      }
-    );
+    const pollyClient = new PollyClient({ region: process.env.AWS_REGION });
+
+    const pollyVoice = 'Ricardo'; // Voz padrão se não houver mapeamento
+
+    const command = new SynthesizeSpeechCommand({
+      Text: text,
+      OutputFormat: 'mp3',
+      VoiceId: pollyVoice,
+      LanguageCode: language
+    });
+
+    const ttsResponse = await pollyClient.send(command);
+
+    const audioStream = ttsResponse.AudioStream;
+    const chunks = [];
+    for await (const chunk of audioStream) {
+      chunks.push(chunk);
+    }
+    const audioBuffer = Buffer.concat(chunks);
+    const audioContent = audioBuffer.toString('base64');
 
     res.status(200).json({
-      audioContent: ttsResponse.data.audioContent,
+      audioContent,
       charsUsed: text.length,
       totalUsed: currentTotal + text.length
     });
@@ -91,10 +103,10 @@ async function handleError(error, res, text) {
     details: null
   };
 
-  if (axios.isAxiosError(error)) {
-    errorInfo.message = error.response?.data?.error?.message || error.message;
-    errorInfo.status = error.response?.status || 500;
-    errorInfo.details = error.response?.data;
+  if (error.name === 'PollyServiceException') {
+    errorInfo.message = error.message;
+    errorInfo.status = error.$metadata.httpStatusCode || 500;
+    errorInfo.details = error.$response;
   } else if (error instanceof Error) {
     errorInfo.message = error.message;
   }

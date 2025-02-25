@@ -1,12 +1,12 @@
 {
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.750.0",
     "@heroicons/react": "^2.2.0",
     "@testing-library/react": "^14.0.0",
     "@types/redis": "^4.0.11",
     "@vercel/analytics": "^1.5.0",
     "@vercel/kv": "^3.0.0",
     "@vercel/node": "^5.1.8",
-    "axios": "^1.7.9",
     "chart.js": "^4.4.8",
     "chartjs-adapter-date-fns": "^3.0.0",
     "jwt-decode": "^4.0.0",
