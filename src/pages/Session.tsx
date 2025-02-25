@@ -384,6 +384,9 @@ const Session = () => {
                   {autoReadEnabled && currentAudioData && (
                     <button
                       onClick={() => {
+                        if (currentAudio) {
+                          currentAudio.pause();
+                        }
                         if (currentAudioData) {
                           const audio = new Audio(currentAudioData);
                           setCurrentAudio(audio);
