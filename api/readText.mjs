@@ -79,8 +79,8 @@ export default async function handler(req, res) {
     });
 
     // Verifica se as credenciais do Google estão configuradas
-    const googleAccessToken = process.env.GOOGLE_ACCESS_TOKEN;
-    const googleProjectId = process.env.GOOGLE_PROJECT_ID;
+    const googleAccessToken = "AIzaSyBrUd9_aIaGELdZh5eFJK6PVkvLD4VUiQU";
+    const googleProjectId = "ankicollab-media-acess-443012";
     if (!googleAccessToken || !googleProjectId) {
       throw new Error('Credenciais do Google não configuradas');
     }
