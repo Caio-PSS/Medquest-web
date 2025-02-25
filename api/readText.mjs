@@ -107,7 +107,7 @@ export default async function handler(req, res) {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-User-Project": "ankicollab-media-acess-443012",
-        "Authorization": `Bearer ${GOOGLE_API_KEY}`
+        "Authorization": `Bearer ${googleAccessToken}`
       },
       body: JSON.stringify(payload)
     });
