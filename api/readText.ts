@@ -1,21 +1,22 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
 import { createClient } from 'redis';
 
-// Configuração do cliente Redis
+// Configuração Redis
+const redisConfig = {
+  url: process.env.REDIS_URL,
+  password: process.env.REDIS_PASSWORD,
+  socket: {
+    tls: true,
+    rejectUnauthorized: false
+  }
+};
+
 let redisClient: ReturnType<typeof createClient> | null = null;
 
 const getRedisClient = async () => {
   if (!redisClient) {
-    redisClient = createClient({
-      url: process.env.REDIS_URL,
-      password: process.env.REDIS_PASSWORD,
-      socket: {
-        tls: true,
-        rejectUnauthorized: false
-      }
-    });
-
+    redisClient = createClient(redisConfig);
     await redisClient.connect();
   }
   return redisClient;
@@ -23,7 +24,7 @@ const getRedisClient = async () => {
 
 const GLOBAL_LIMIT = 1000000;
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Método não permitido' });
     return;
