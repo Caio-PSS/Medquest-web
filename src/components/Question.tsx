@@ -20,10 +20,8 @@ interface QuestionProps {
   onConfirm: (answer: string, isCorrect: boolean) => void;
   onNext: () => void;
   autoReadEnabled: boolean;
-  readText: (text: string) => void;
+  readText: (text: string, type: "question" | "explanation") => void;
   isReading: boolean;
-  currentAudioData: string | null;
-  onRepeat: () => void;
 }
 
 export default function Question({ 
@@ -32,9 +30,7 @@ export default function Question({
   onNext, 
   autoReadEnabled, 
   readText,
-  isReading,
-  currentAudioData,
-  onRepeat
+  isReading
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
@@ -52,7 +48,7 @@ export default function Question({
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
 
-  // Construir texto completo com alternativas
+  // Constrói o texto completo da questão (enunciado + alternativas)
   const getFullQuestionText = useCallback(() => {
     const alternatives = [
       data.alternativa_a,
@@ -67,13 +63,14 @@ export default function Question({
     return `${data.enunciado}. ${alternatives}`;
   }, [data]);
 
-  // Controle de leitura automática
+  // Leitura automática: se autoReadEnabled estiver ativo, 
+  // quando não houver reprodução em andamento, lê o enunciado ou a explicação
   useEffect(() => {
     if (autoReadEnabled && !isReading) {
       if (showFeedback && data.explicacao) {
-        readText(data.explicacao);
+        readText(data.explicacao, "explanation");
       } else if (!showFeedback) {
-        readText(getFullQuestionText());
+        readText(getFullQuestionText(), "question");
       }
     }
   }, [autoReadEnabled, showFeedback, data.explicacao, getFullQuestionText, isReading, readText]);
@@ -98,15 +95,16 @@ export default function Question({
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
-      <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
-        <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
-        
-        {/* Botão de Repetir */}
-        {autoReadEnabled && currentAudioData && (
+      {/* Cabeçalho com título e botão de reprodução da questão */}
+      <div className="flex justify-between items-center mb-6">
+        <span className="text-2xl font-bold text-white">
+          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+        </span>
+        {autoReadEnabled && (
           <button
-            onClick={onRepeat}
+            onClick={() => readText(getFullQuestionText(), "question")}
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            title="Repetir leitura"
+            title="Repetir leitura da questão"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -118,11 +116,14 @@ export default function Question({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/>
+              <path d="M21.5 2v6h-6" />
+              <path d="M2.5 22v-6h6" />
+              <path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
             </svg>
           </button>
         )}
-      </h2>
+      </div>
+
       {imageProps && (
         <div className="mb-8 flex justify-center">
           <div
@@ -248,8 +249,32 @@ export default function Question({
 
           {data.explicacao && (
             <div className="text-gray-300">
-              <div className="font-semibold flex items-center gap-2 mb-2">
-                <Lightbulb className="w-5 h-5 inline-block" /> Explicação:
+              <div className="font-semibold flex justify-between items-center gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 inline-block" /> Explicação:
+                </div>
+                {autoReadEnabled && (
+                  <button
+                    onClick={() => readText(data.explicacao as string, "explanation")}
+                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                    title="Repetir leitura da explicação"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-6 h-6"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21.5 2v6h-6" />
+                      <path d="M2.5 22v-6h6" />
+                      <path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
+                    </svg>
+                  </button>
+                )}
               </div>
               <p className="ml-6">{data.explicacao}</p>
             </div>
