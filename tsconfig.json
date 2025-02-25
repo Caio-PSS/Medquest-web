@@ -26,9 +26,7 @@
     "next-env.d.ts",
     "src",
     "**/*.ts",
-    "**/*.tsx",
-    "api",
-    "api/**/*.ts"
-  ],
+    "**/*.tsx"
+, "api"  ],
   "exclude": ["node_modules"]
 }

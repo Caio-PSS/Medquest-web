@@ -241,134 +241,170 @@ const Session = () => {
 
   return (
     <div className="p-4 min-h-screen bg-gray-950">
-      {/* Toggle de leitura automática */}
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={() => setAutoReadEnabled(prev => !prev)}
-          className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition"
-        >
-          {autoReadEnabled ? 'Desativar' : 'Ativar'} Leitura Automática
-        </button>
-      </div>
+      {/* Toggle de leitura automática */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setAutoReadEnabled(prev => !prev)}
+          className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition"
+        >
+          {autoReadEnabled ? 'Desativar' : 'Ativar'} Leitura Automática
+        </button>
+      </div>
 
-      {questions.length === 0 ? (
-        <div className="max-w-6xl mx-auto bg-gray-900 rounded-2xl shadow-xl p-8 mb-8 border border-gray-800">
-          <h1 className="text-3xl font-bold mb-8 text-gray-800">
-            Configurar Nova Sessão
-          </h1>
+      {questions.length === 0 ? (
+        <div className="max-w-6xl mx-auto bg-gray-900 rounded-2xl shadow-xl p-8 mb-8 border border-gray-800">
+          <h1 className="text-3xl font-bold mb-8 text-gray-800">
+            Configurar Nova Sessão
+          </h1>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="bg-gray-50 p-6 rounded-xl">
-              <label className="block mb-3 font-semibold text-gray-700">
-                Número de Questões
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={numQuestions}
-                onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div className="bg-gray-50 p-6 rounded-xl">
+              <label className="block mb-3 font-semibold text-gray-700">
+                Número de Questões
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
 
-            <div className="bg-gray-50 p-6 rounded-xl flex items-center gap-4">
-              <input
-                type="checkbox"
-                id="includeRepeats"
-                checked={includeRepeats}
-                onChange={(e) => setIncludeRepeats(e.target.checked)}
-                className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all"
-              />
-              <label htmlFor="includeRepeats" className="font-semibold text-gray-700">
-                Incluir questões já respondidas
-              </label>
-            </div>
-          </div>
+            <div className="bg-gray-50 p-6 rounded-xl flex items-center gap-4">
+              <input
+                type="checkbox"
+                id="includeRepeats"
+                checked={includeRepeats}
+                onChange={(e) => setIncludeRepeats(e.target.checked)}
+                className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all"
+              />
+              <label htmlFor="includeRepeats" className="font-semibold text-gray-700">
+                Incluir questões já respondidas
+              </label>
+            </div>
+          </div>
 
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">
-              Selecione Categorias e Subtópicos
-            </h2>
-            <div className="space-y-8">
-              {categories.map((category) => {
-                const allSelected = category.subtopics.every(sub =>
-                  selections.some(s => s.categoria === category.name && s.subtema === sub)
-                );
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">
+              Selecione Categorias e Subtópicos
+            </h2>
+            <div className="space-y-8">
+              {categories.map((category) => {
+                const allSelected = category.subtopics.every(sub =>
+                  selections.some(s => s.categoria === category.name && s.subtema === sub)
+                );
 
-                return (
-                  <div key={category.name} className="bg-gray-50 rounded-xl p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="font-bold text-xl text-gray-800">
-                        {category.name}
-                      </h3>
-                      <button
-                        onClick={() => handleSelectAllSubtopics(category.name, category.subtopics)}
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
-                      >
-                        {allSelected ? (
-                          <CheckCircle className="w-5 h-5" />
-                        ) : (
-                          <Circle className="w-5 h-5" />
-                        )}
-                        <span className="font-medium">Selecionar Todos</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {category.subtopics.map((subtopic) => {
-                        const isSelected = selections.some(
-                          s => s.categoria === category.name && s.subtema === subtopic
-                        );
+                return (
+                  <div key={category.name} className="bg-gray-50 rounded-xl p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-xl text-gray-800">
+                        {category.name}
+                      </h3>
+                      <button
+                        onClick={() => handleSelectAllSubtopics(category.name, category.subtopics)}
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
+                      >
+                        {allSelected ? (
+                          <CheckCircle className="w-5 h-5" />
+                        ) : (
+                          <Circle className="w-5 h-5" />
+                        )}
+                        <span className="font-medium">Selecionar Todos</span>
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {category.subtopics.map((subtopic) => {
+                        const isSelected = selections.some(
+                          s => s.categoria === category.name && s.subtema === subtopic
+                        );
 
-                        return (
-                          <button
-                            key={`${category.name}-${subtopic}`}
-                            onClick={() => handleSubtopicSelect(category.name, subtopic)}
-                            className={`
-                              group relative p-4 rounded-lg text-sm transition-all duration-200
-                              ${isSelected 
-                                ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700' 
-                                : 'bg-white hover:bg-gray-100 border border-gray-200 hover:border-blue-300'
-                              }
-                            `}
-                          >
-                            <span className="font-medium">{subtopic}</span>
-                            {isSelected && (
-                              <CheckCircle className="absolute right-2 top-2 w-4 h-4" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+                        return (
+                          <button
+                            key={`${category.name}-${subtopic}`}
+                            onClick={() => handleSubtopicSelect(category.name, subtopic)}
+                            className={`
+                              group relative p-4 rounded-lg text-sm transition-all duration-200
+                              ${isSelected
+                                ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700'
+                                : 'bg-white hover:bg-gray-100 border border-gray-200 hover:border-blue-300'
+                              }
+                            `}
+                          >
+                            <span className="font-medium">{subtopic}</span>
+                            {isSelected && (
+                              <CheckCircle className="absolute right-2 top-2 w-4 h-4" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
-          <button
-            onClick={loadQuestions}
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-700 
-                      disabled:opacity-50 transition-all duration-200 text-lg font-medium
-                      shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Bars height="24" width="24" color="#ffffff" />
-                <span>Carregando...</span>
-              </>
-            ) : (
-              'Iniciar Sessão'
-            )}
-          </button>
-        </div>
-      ) : (
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-gray-900 rounded-2xl shadow-xl p-6 mb-6 border border-gray-800">
-            <div className="flex justify-between items-center">
-              <span className="text-white font-medium">
-                Questão {currentQuestion + 1} de {questions.length}
-              </span>
+          <button
+            onClick={loadQuestions}
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-700
+                      disabled:opacity-50 transition-all duration-200 text-lg font-medium
+                      shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <Bars height="24" width="24" color="#ffffff" />
+                <span>Carregando...</span>
+              </>
+            ) : (
+              'Iniciar Sessão'
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-gray-900 rounded-2xl shadow-xl p-6 mb-6 border border-gray-800">
+            <div className="flex justify-between items-center">
+              <span className="text-white font-medium">
+                Questão {currentQuestion + 1} de {questions.length}
+              </span>
+             <div className="flex gap-4 items-center">
+              {/* Novo botão de TTS */}
+              <button
+                onClick={() => setAutoReadEnabled(prev => !prev)}
+                className={`
+                  flex items-center gap-2 p-2 rounded-full transition-all
+                  ${autoReadEnabled
+                    ? 'bg-green-600 text-white shadow-lg hover:bg-green-500'
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                  }
+                `}
+                title={autoReadEnabled ? 'Desativar leitura automática' : 'Ativar leitura automática'}
+              >
+                {autoReadEnabled ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                      <path d="M12 22c1.1 0 2-.9 2-2V7l5-5v4.5c1.1 0 2.5.9 2.5 2s-1.4 2-2.5 2V13c0 1.1-.9 2-2 2H12z"/>
+                      <path d="M2.5 17.5 5 15M5 17.5 2.5 15M18 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                      <path d="M8 14c0 2.2 1.8 4 4 4 1.1 0 2.1-.4 2.8-1.2"/>
+                      <circle cx="14" cy="9" r="3"/>
+                    </svg>
+                    <span className="sr-only">Leitura Automática</span>
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                      <path d="M12 22c1.1 0 2-.9 2-2V7l5-5v4.5c1.1 0 2.5.9 2.5 2s-1.4 2-2.5 2V13c0 1.1-.9 2-2 2H12z"/>
+                      <path d="M2.5 17.5 5 15M5 17.5 2.5 15M18 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                      <circle cx="14" cy="9" r="3"/>
+                    </svg>
+                    <span className="sr-only">Leitura Automática</span>
+                  </>
+                )}
+              </button>
+
+              {/* Contadores de tempo */}
               <div className="flex gap-4">
                 <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">
                   <span className="font-semibold">Tempo Questão:</span>
@@ -380,28 +416,29 @@ const Session = () => {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Bars height="50" width="50" color="#3b82f6" ariaLabel="loading" />
-            </div>
-          ) : (
-            questions[currentQuestion] && (
-              <Question 
-                key={currentQuestion}
-                data={questions[currentQuestion]} 
-                onConfirm={handleAnswer}
-                onNext={handleNextQuestion}
-                autoReadEnabled={autoReadEnabled}
-                readText={readText}
-              />
-            )
-          )}
-        </div>
-      )}
-    </div>
-  );
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Bars height="50" width="50" color="#3b82f6" ariaLabel="loading" />
+            </div>
+          ) : (
+            questions[currentQuestion] && (
+              <Question
+                key={currentQuestion}
+                data={questions[currentQuestion]}
+                onConfirm={handleAnswer}
+                onNext={handleNextQuestion}
+                autoReadEnabled={autoReadEnabled}
+                readText={readText}
+              />
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default Session;
