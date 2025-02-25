@@ -33,7 +33,6 @@ const Session = () => {
   const { authToken, authUser } = useAuth();
   const navigate = useNavigate();
 
-  // Estados de configuração e controle
   const [categories, setCategories] = useState<Category[]>([]);
   const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -46,17 +45,12 @@ const Session = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
 
-  // Estados para controle do áudio e TTS
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [currentAudioType, setCurrentAudioType] = useState<"question" | "explanation" | null>(null);
   const [questionAudioData, setQuestionAudioData] = useState<string | null>(null);
   const [explanationAudioData, setExplanationAudioData] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
-  const [audioPausedTime, setAudioPausedTime] = useState(0);
-
-  // Controle da leitura automática (TTS)
-  const [autoReadEnabled, setAutoReadEnabled] = useState(false);
-
+  
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
@@ -66,13 +60,9 @@ const Session = () => {
     correctComments: [] as string[],
   });
 
-<<<<<<< HEAD
   // Controle de leitura automática
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
-=======
-  // Atualiza o tick a cada 1 segundo
->>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
@@ -264,12 +254,6 @@ const Session = () => {
       }
       if (audioUrl) {
         const audio = new Audio(audioUrl);
-<<<<<<< HEAD
-=======
-        
-        // Armazena dados do áudio para controle de reprodução
-        setCurrentAudioData(audioUrl);
->>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
         setCurrentAudio(audio);
         setCurrentAudioType(type);
         audio.play();
@@ -286,29 +270,6 @@ const Session = () => {
       setIsReading(false);
     }
   }
-
-  // Lida com clique no botão TTS (Play/Pause/Resume)
-  const handleTTSButtonClick = () => {
-    // Se o TTS não estiver ativado, ativa-o
-    if (!autoReadEnabled) {
-      setAutoReadEnabled(true);
-      return;
-    }
-    // Se houver áudio, controla play/pause
-    if (currentAudio) {
-      if (!currentAudio.paused) {
-        currentAudio.pause();
-        setAudioPausedTime(currentAudio.currentTime);
-      } else {
-        const resumeTime = Math.max(0, audioPausedTime - 2);
-        currentAudio.currentTime = resumeTime;
-        currentAudio.play();
-      }
-    }
-  };
-
-  // Define se o áudio está tocando
-  const isPlaying = currentAudio ? !currentAudio.paused : false;
 
   return (
     <div className="p-4 min-h-screen bg-gray-950">
@@ -339,7 +300,6 @@ const Session = () => {
               </label>
             </div>
           </div>
-<<<<<<< HEAD
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-6 text-white">Selecione Categorias e Subtópicos</h2>
             <div className="space-y-8">
@@ -463,44 +423,6 @@ const Session = () => {
                   <div className="flex items-center bg-purple-600 text-white px-3 py-2 rounded-lg shadow-md">
                     <span className="font-semibold">Total:</span>
                     <span className="ml-2">{sessionElapsed}s</span>
-=======
-        ) : (
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-gray-900 rounded-2xl shadow-xl p-6 mb-6 border border-gray-800">
-              <div className="flex justify-between items-center">
-                <span className="text-white font-medium">
-                  Questão {currentQuestion + 1} de {questions.length}
-                </span>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleTTSButtonClick}
-                    className="p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-md"
-                    disabled={isReading}
-                  >
-                    {isPlaying ? (
-                      // Ícone de pause
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="6" y="4" width="4" height="16" />
-                        <rect x="14" y="4" width="4" height="16" />
-                      </svg>
-                    ) : (
-                      // Ícone de play
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="5,3 19,12 5,21" />
-                      </svg>
-                    )}
-                    <span className="sr-only">TTS</span>
-                  </button>
-                  <div className="flex gap-4">
-                    <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">
-                      <span className="font-semibold">Questão:</span>
-                      <span className="ml-2">{questionElapsed}s</span>
-                    </div>
-                    <div className="flex items-center bg-purple-600 text-white px-3 py-2 rounded-lg shadow-md">
-                      <span className="font-semibold">Total:</span>
-                      <span className="ml-2">{sessionElapsed}s</span>
-                    </div>
->>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
                   </div>
                 </div>
               </div>
@@ -523,14 +445,9 @@ const Session = () => {
               )
             )}
           </div>
-<<<<<<< HEAD
         </div>
       )}
     </div>
-=======
-        )}
-     </div>
->>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
   );
 };
 
