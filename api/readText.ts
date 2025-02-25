@@ -1,34 +1,65 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
-import { kv } from '@vercel/kv';
+import { createClient } from 'redis';
+
+// Configuração do cliente Redis
+let redisClient: ReturnType<typeof createClient> | null = null;
+
+const getRedisClient = async () => {
+  if (!redisClient) {
+    redisClient = createClient({
+      url: process.env.REDIS_URL,
+      password: process.env.REDIS_PASSWORD,
+      socket: {
+        tls: true,
+        rejectUnauthorized: false
+      }
+    });
+
+    await redisClient.connect();
+  }
+  return redisClient;
+};
 
 const GLOBAL_LIMIT = 1000000;
 
 export default async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== 'POST') {
-    res.status(405).send('Method Not Allowed');
+    res.status(405).json({ error: 'Método não permitido' });
     return;
   }
 
   const { text, language = 'pt-BR', voice = 'pt-BR-Neural2' } = req.body;
-  if (!text) {
-    res.status(400).json({ error: 'Texto não informado.' });
+  
+  if (!text || typeof text !== 'string') {
+    res.status(400).json({ error: 'Texto inválido ou não fornecido' });
     return;
   }
 
   try {
-    // Verificação e atualização atômica do limite
-    const currentTotal = await kv.get<number>('totalCharsUsed') || 0;
+    const client = await getRedisClient();
+    
+    // Verifica conexão ativa
+    if (!client.isOpen) {
+      await client.connect();
+    }
+
+    // Operação atômica
+    const currentTotal = Number(await client.get('totalCharsUsed')) || 0;
     
     if (currentTotal + text.length > GLOBAL_LIMIT) {
-      res.status(429).json({ error: 'Limite global de caracteres atingido.' });
+      res.status(429).json({ 
+        error: 'Limite global excedido',
+        remaining: GLOBAL_LIMIT - currentTotal
+      });
       return;
     }
 
-    // Atualiza o contador de caracteres
-    await kv.incrby('totalCharsUsed', text.length);
+    // Atualiza o contador
+    await client.incrBy('totalCharsUsed', text.length);
 
-    const response = await axios.post(
+    // Chamada à API do Google
+    const ttsResponse = await axios.post(
       'https://texttospeech.googleapis.com/v1/text:synthesize',
       {
         input: { text },
@@ -37,33 +68,39 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       },
       {
         params: { key: process.env.GOOGLE_API_KEY },
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 10000
       }
     );
 
-    const audioContent = response.data.audioContent;
-    res.status(200).json({ audioContent });
-    } catch (error) {
-    console.error('Erro no processamento:', error);
+    res.status(200).json({ 
+      audioContent: ttsResponse.data.audioContent,
+      charsUsed: text.length,
+      totalUsed: currentTotal + text.length
+    });
 
-    // Reverte o contador apenas se houver text definido
-    if (typeof text !== 'undefined') {
-      await kv.decrby('totalCharsUsed', text.length);
+  } catch (error) {
+    // Rollback em caso de erro
+    if (text && redisClient?.isOpen) {
+      await redisClient.decrBy('totalCharsUsed', text.length);
     }
 
-    // Tratamento seguro do erro
-    let errorMessage = 'Falha ao converter texto para fala.';
-    
+    // Tratamento de erros detalhado
+    let errorMessage = 'Erro interno no servidor';
+    let statusCode = 500;
+
     if (axios.isAxiosError(error)) {
-      // Erro específico do Axios
       errorMessage = error.response?.data?.error?.message || error.message;
+      statusCode = error.response?.status || 500;
     } else if (error instanceof Error) {
-      // Erro genérico
       errorMessage = error.message;
     }
 
-    res.status(500).json({ 
-      error: errorMessage
+    console.error(`Erro na API: ${errorMessage}`, error);
+    
+    res.status(statusCode).json({
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error : undefined
     });
   }
 };
