@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { CheckCircle, X, AlertTriangle, Lightbulb } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { CheckCircle, X, AlertTriangle, Lightbulb, PlayCircle, PauseCircle, RotateCcw } from 'lucide-react';
 
 interface QuestionType {
   id: number;
@@ -22,15 +22,28 @@ interface QuestionProps {
   autoReadEnabled: boolean;
   readText: (text: string, type: "question" | "explanation") => void;
   isReading: boolean;
+  // Novas props de controle de áudio:
+  toggleQuestionAudio: () => void;
+  replayQuestionAudio: () => void;
+  toggleExplanationAudio: () => void;
+  replayExplanationAudio: () => void;
+  questionAudioPlaying: boolean;
+  explanationAudioPlaying: boolean;
 }
 
-export default function Question({ 
-  data, 
-  onConfirm, 
-  onNext, 
-  autoReadEnabled, 
+export default function Question({
+  data,
+  onConfirm,
+  onNext,
+  autoReadEnabled,
   readText,
-  isReading
+  isReading,
+  toggleQuestionAudio,
+  replayQuestionAudio,
+  toggleExplanationAudio,
+  replayExplanationAudio,
+  questionAudioPlaying,
+  explanationAudioPlaying,
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
@@ -48,39 +61,25 @@ export default function Question({
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
 
-  // Constrói o texto completo da questão (enunciado + alternativas)
+  // Monta o texto completo da questão (enunciado + alternativas)
   const getFullQuestionText = useCallback(() => {
     const alternatives = [
       data.alternativa_a,
       data.alternativa_b,
       data.alternativa_c,
-      data.alternativa_d
+      data.alternativa_d,
     ]
       .filter(Boolean)
       .map((alt, index) => `Alternativa ${String.fromCharCode(65 + index)}: ${alt}`)
       .join('. ');
-
     return `${data.enunciado}. ${alternatives}`;
   }, [data]);
-
-  // Leitura automática: se autoReadEnabled estiver ativo, 
-  // quando não houver reprodução em andamento, lê o enunciado ou a explicação
-  useEffect(() => {
-    if (autoReadEnabled && !isReading) {
-      if (showFeedback && data.explicacao) {
-        readText(data.explicacao, "explanation");
-      } else if (!showFeedback) {
-        readText(getFullQuestionText(), "question");
-      }
-    }
-  }, [autoReadEnabled, showFeedback, data.explicacao, getFullQuestionText, isReading, readText]);
 
   const handleConfirmAnswer = () => {
     if (!data?.resposta) {
       console.error('Resposta não encontrada');
       return;
     }
-    
     setShowFeedback(true);
     const isCorrect = selected.toUpperCase() === data.resposta.toUpperCase();
     setIsCorrectAnswer(isCorrect);
@@ -95,33 +94,29 @@ export default function Question({
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
-      {/* Cabeçalho com título e botão de reprodução da questão */}
+      {/* Cabeçalho com título e controles de áudio para a questão */}
       <div className="flex justify-between items-center mb-6">
-        <span className="text-2xl font-bold text-white">
-          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
-        </span>
-        {autoReadEnabled && (
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">
+            <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+          </span>
           <button
-            onClick={() => readText(getFullQuestionText(), "question")}
+            onClick={toggleQuestionAudio}
+            title="Play/Pause Questão"
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            title="Repetir leitura da questão"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21.5 2v6h-6" />
-              <path d="M2.5 22v-6h6" />
-              <path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
-            </svg>
+            {questionAudioPlaying ? <PauseCircle className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />}
           </button>
-        )}
+        </div>
+        <div>
+          <button
+            onClick={replayQuestionAudio}
+            title="Replay Questão"
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+          >
+            <RotateCcw className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {imageProps && (
@@ -166,7 +161,6 @@ export default function Question({
           const alternativeKey = `alternativa_${opt.toLowerCase()}` as keyof QuestionType;
           const isCorrect = opt.toUpperCase() === data.resposta.toUpperCase();
           const isSelected = selected === opt;
-
           return data[alternativeKey] && (
             <button
               key={opt}
@@ -234,7 +228,6 @@ export default function Question({
               <CheckCircle className="w-6 h-6" /> Parabéns, você acertou!
             </div>
           )}
-
           {isCorrectAnswer === false && (
             <>
               <div className="text-red-500 font-bold flex items-center gap-2 mb-4">
@@ -246,40 +239,32 @@ export default function Question({
               </div>
             </>
           )}
-
           {data.explicacao && (
             <div className="text-gray-300">
               <div className="font-semibold flex justify-between items-center gap-2 mb-2">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-5 h-5 inline-block" /> Explicação:
                 </div>
-                {autoReadEnabled && (
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => readText(data.explicacao as string, "explanation")}
+                    onClick={toggleExplanationAudio}
+                    title="Play/Pause Explicação"
                     className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-                    title="Repetir leitura da explicação"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21.5 2v6h-6" />
-                      <path d="M2.5 22v-6h6" />
-                      <path d="M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
-                    </svg>
+                    {explanationAudioPlaying ? <PauseCircle className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />}
                   </button>
-                )}
+                  <button
+                    onClick={replayExplanationAudio}
+                    title="Replay Explicação"
+                    className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                  >
+                    <RotateCcw className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
               <p className="ml-6">{data.explicacao}</p>
             </div>
           )}
-
           <button
             onClick={() => {
               setShowFeedback(false);

@@ -50,7 +50,7 @@ const Session = () => {
   const [questionAudioData, setQuestionAudioData] = useState<string | null>(null);
   const [explanationAudioData, setExplanationAudioData] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
-  
+
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
@@ -60,7 +60,7 @@ const Session = () => {
     correctComments: [] as string[],
   });
 
-  // Controle de leitura automática
+  // Leitura automática desativada (para não repetir automaticamente)
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ const Session = () => {
         const data = await res.json();
         const formatted = Object.entries(data).map(([name, subtopics]) => ({
           name,
-          subtopics: subtopics as string[]
+          subtopics: subtopics as string[],
         }));
         setCategories(formatted);
       } catch (err) {
@@ -131,7 +131,7 @@ const Session = () => {
         selections: JSON.stringify(selections),
         numQuestions: numQuestions.toString(),
         includeRepeats: includeRepeats.toString(),
-        userId: authUser?.id?.toString() || ''
+        userId: authUser?.id?.toString() || '',
       });
       const res = await fetch(
         `https://medquest-floral-log-224.fly.dev/api/questions?${params}`,
@@ -176,7 +176,7 @@ const Session = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           id_questao: currentQ.id,
@@ -184,8 +184,8 @@ const Session = () => {
           resposta_correta: currentQ.resposta,
           resultado: isCorrect ? 'Correta' : 'Incorreta',
           tempo_resposta: timeTaken,
-          user_id: authUser?.id
-        })
+          user_id: authUser?.id,
+        }),
       });
       setSessionStats(prev => ({
         ...prev,
@@ -208,7 +208,7 @@ const Session = () => {
   const handleNextQuestion = () => {
     setCurrentQuestion(prev => prev + 1);
     setQuestionStartTime(Date.now());
-    // Opcional: limpar buffers de áudio para a nova questão
+    // Limpa buffers de áudio para a nova questão
     setQuestionAudioData(null);
     setExplanationAudioData(null);
     if (currentAudio) {
@@ -219,12 +219,8 @@ const Session = () => {
     setCurrentAudioType(null);
   };
 
-  const questionElapsed = Math.floor((Date.now() - questionStartTime) / 1000);
-  const sessionElapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-
   async function readText(text: string, type: "question" | "explanation") {
     try {
-      // Se houver áudio em reprodução, interrompe-o
       if (currentAudio) {
         currentAudio.pause();
         setCurrentAudio(null);
@@ -270,6 +266,73 @@ const Session = () => {
       setIsReading(false);
     }
   }
+
+  const toggleQuestionAudio = () => {
+    if (currentAudio && currentAudioType === "question") {
+      if (!currentAudio.paused) {
+        currentAudio.pause();
+      } else {
+        currentAudio.play();
+      }
+    } else {
+      const q = questions[currentQuestion];
+      if (!q) return;
+      let fullText = q.enunciado;
+      const alternatives = [];
+      if (q.alternativa_a) alternatives.push(`Alternativa A: ${q.alternativa_a}`);
+      if (q.alternativa_b) alternatives.push(`Alternativa B: ${q.alternativa_b}`);
+      if (q.alternativa_c) alternatives.push(`Alternativa C: ${q.alternativa_c}`);
+      if (q.alternativa_d) alternatives.push(`Alternativa D: ${q.alternativa_d}`);
+      fullText += ". " + alternatives.join(". ");
+      readText(fullText, "question");
+    }
+  };
+
+  const replayQuestionAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      setCurrentAudio(null);
+    }
+    const q = questions[currentQuestion];
+    if (!q) return;
+    let fullText = q.enunciado;
+    const alternatives = [];
+    if (q.alternativa_a) alternatives.push(`Alternativa A: ${q.alternativa_a}`);
+    if (q.alternativa_b) alternatives.push(`Alternativa B: ${q.alternativa_b}`);
+    if (q.alternativa_c) alternatives.push(`Alternativa C: ${q.alternativa_c}`);
+    if (q.alternativa_d) alternatives.push(`Alternativa D: ${q.alternativa_d}`);
+    fullText += ". " + alternatives.join(". ");
+    readText(fullText, "question");
+  };
+
+  const toggleExplanationAudio = () => {
+    if (currentAudio && currentAudioType === "explanation") {
+      if (!currentAudio.paused) {
+        currentAudio.pause();
+      } else {
+        currentAudio.play();
+      }
+    } else {
+      const q = questions[currentQuestion];
+      if (q && q.explicacao) {
+        readText(q.explicacao, "explanation");
+      }
+    }
+  };
+
+  const replayExplanationAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      setCurrentAudio(null);
+    }
+    const q = questions[currentQuestion];
+    if (q && q.explicacao) {
+      readText(q.explicacao, "explanation");
+    }
+  };
+
+  const questionAudioPlaying = currentAudio && currentAudioType === "question" && !currentAudio.paused;
+  const explanationAudioPlaying = currentAudio && currentAudioType === "explanation" && !currentAudio.paused;
 
   return (
     <div className="p-4 min-h-screen bg-gray-950">
@@ -384,45 +447,20 @@ const Session = () => {
                     setAutoReadEnabled(!autoReadEnabled);
                   }}
                   className={`p-2 rounded-full transition-colors ${
-                    autoReadEnabled
-                      ? 'bg-green-600 hover:bg-green-500 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    autoReadEnabled ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                   }`}
                   disabled={isReading}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-6 h-6"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    {autoReadEnabled ? (
-                      <>
-                        <rect x="6" y="4" width="4" height="16" />
-                        <rect x="14" y="4" width="4" height="16" />
-                      </>
-                    ) : (
-                      <>
-                        <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                        <circle cx="12" cy="14" r="4" />
-                        <line x1="12" y1="6" x2="12" y2="6" />
-                      </>
-                    )}
-                  </svg>
-                  <span className="sr-only">Leitura Automática</span>
+                  {autoReadEnabled ? 'Auto On' : 'Auto Off'}
                 </button>
                 <div className="flex gap-4">
                   <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">
                     <span className="font-semibold">Questão:</span>
-                    <span className="ml-2">{questionElapsed}s</span>
+                    <span className="ml-2">{Math.floor((Date.now() - questionStartTime) / 1000)}s</span>
                   </div>
                   <div className="flex items-center bg-purple-600 text-white px-3 py-2 rounded-lg shadow-md">
                     <span className="font-semibold">Total:</span>
-                    <span className="ml-2">{sessionElapsed}s</span>
+                    <span className="ml-2">{Math.floor((Date.now() - sessionStartTime) / 1000)}s</span>
                   </div>
                 </div>
               </div>
@@ -441,6 +479,12 @@ const Session = () => {
                   autoReadEnabled={autoReadEnabled}
                   readText={readText}
                   isReading={isReading}
+                  toggleQuestionAudio={toggleQuestionAudio}
+                  replayQuestionAudio={replayQuestionAudio}
+                  toggleExplanationAudio={toggleExplanationAudio}
+                  replayExplanationAudio={replayExplanationAudio}
+                  questionAudioPlaying={!!questionAudioPlaying}
+                  explanationAudioPlaying={!!explanationAudioPlaying}
                 />
               )
             )}
