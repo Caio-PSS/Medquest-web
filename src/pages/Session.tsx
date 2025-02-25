@@ -60,7 +60,7 @@ const Session = () => {
     correctComments: [] as string[],
   });
 
-  // Leitura automática desativada (para não repetir automaticamente)
+  // "Leitura auto" desativada inicialmente
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
   useEffect(() => {
@@ -89,7 +89,6 @@ const Session = () => {
         console.error('Erro ao buscar categorias:', err);
       }
     };
-
     if (authToken) fetchCategories();
   }, [authToken]);
 
@@ -219,14 +218,22 @@ const Session = () => {
     setCurrentAudioType(null);
   };
 
-  async function readText(text: string, type: "question" | "explanation") {
+  /**
+   * Função readText: agora aceita um parâmetro opcional "preload".
+   * Se preload === true, busca e armazena o áudio sem iniciar a reprodução.
+   */
+  async function readText(
+    text: string,
+    type: "question" | "explanation",
+    preload?: boolean
+  ) {
     try {
-      if (currentAudio) {
+      if (!preload && currentAudio) {
         currentAudio.pause();
         setCurrentAudio(null);
         setCurrentAudioType(null);
       }
-      setIsReading(true);
+      if (!preload) setIsReading(true);
       let audioUrl = "";
       if (type === "question" && questionAudioData) {
         audioUrl = questionAudioData;
@@ -248,25 +255,31 @@ const Session = () => {
           }
         }
       }
-      if (audioUrl) {
-        const audio = new Audio(audioUrl);
-        setCurrentAudio(audio);
-        setCurrentAudioType(type);
-        audio.play();
-        audio.onended = () => {
-          setIsReading(false);
-          setCurrentAudio(null);
-          setCurrentAudioType(null);
-        };
-      } else {
-        setIsReading(false);
+      if (!audioUrl) {
+        if (!preload) setIsReading(false);
+        return;
       }
+      if (preload) {
+        // Se for apenas pré-carregar, encerra aqui.
+        return;
+      }
+      // Inicia a reprodução do áudio.
+      const audio = new Audio(audioUrl);
+      setCurrentAudio(audio);
+      setCurrentAudioType(type);
+      audio.play();
+      audio.onended = () => {
+        setIsReading(false);
+        setCurrentAudio(null);
+        setCurrentAudioType(null);
+      };
     } catch (error) {
       console.error('Erro ao ler o texto:', error);
-      setIsReading(false);
+      if (!preload) setIsReading(false);
     }
   }
 
+  // Funções de controle de áudio para a questão:
   const toggleQuestionAudio = () => {
     if (currentAudio && currentAudioType === "question") {
       if (!currentAudio.paused) {
@@ -275,6 +288,7 @@ const Session = () => {
         currentAudio.play();
       }
     } else {
+      // Se não houver áudio ou for de outro tipo, inicie do começo.
       const q = questions[currentQuestion];
       if (!q) return;
       let fullText = q.enunciado;
@@ -305,6 +319,7 @@ const Session = () => {
     readText(fullText, "question");
   };
 
+  // Funções de controle de áudio para a explicação:
   const toggleExplanationAudio = () => {
     if (currentAudio && currentAudioType === "explanation") {
       if (!currentAudio.paused) {
@@ -438,6 +453,7 @@ const Session = () => {
                 Questão {currentQuestion + 1} de {questions.length}
               </span>
               <div className="flex items-center gap-4">
+                {/* Botão de "Leitura auto" */}
                 <button
                   onClick={() => {
                     if (autoReadEnabled && currentAudio) {
@@ -447,11 +463,13 @@ const Session = () => {
                     setAutoReadEnabled(!autoReadEnabled);
                   }}
                   className={`p-2 rounded-full transition-colors ${
-                    autoReadEnabled ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                    autoReadEnabled
+                      ? 'bg-green-600 hover:bg-green-500 text-white'
+                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                   }`}
                   disabled={isReading}
                 >
-                  {autoReadEnabled ? 'Auto On' : 'Auto Off'}
+                  Leitura auto
                 </button>
                 <div className="flex gap-4">
                   <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">

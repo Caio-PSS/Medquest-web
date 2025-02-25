@@ -1,5 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { CheckCircle, X, AlertTriangle, Lightbulb, PlayCircle, PauseCircle, RotateCcw } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { 
+  CheckCircle, X, AlertTriangle, Lightbulb, 
+  PlayCircle, PauseCircle, RotateCcw 
+} from 'lucide-react';
 
 interface QuestionType {
   id: number;
@@ -20,9 +23,9 @@ interface QuestionProps {
   onConfirm: (answer: string, isCorrect: boolean) => void;
   onNext: () => void;
   autoReadEnabled: boolean;
-  readText: (text: string, type: "question" | "explanation") => void;
+  readText: (text: string, type: "question" | "explanation", preload?: boolean) => void;
   isReading: boolean;
-  // Novas props de controle de áudio:
+  // Controles de áudio para questão e explicação:
   toggleQuestionAudio: () => void;
   replayQuestionAudio: () => void;
   toggleExplanationAudio: () => void;
@@ -49,6 +52,8 @@ export default function Question({
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+  // Flag para evitar que o auto leia repetidamente na mesma etapa
+  const [autoTriggered, setAutoTriggered] = useState(false);
 
   const imageProps = data.image_url
     ? {
@@ -92,22 +97,55 @@ export default function Question({
     return data[alternativeKey] || 'Alternativa não encontrada';
   };
 
+  // Quando a etapa muda (por exemplo, de questão para feedback), reinicia a flag do auto
+  useEffect(() => {
+    setAutoTriggered(false);
+  }, [showFeedback]);
+
+  // Auto leitura: se o modo "Leitura auto" estiver ativo e ainda não tiver sido disparado nesta etapa, inicia a leitura automaticamente.
+  useEffect(() => {
+    if (autoReadEnabled && !autoTriggered && !isReading) {
+      if (!showFeedback) {
+        // Inicia a leitura da questão a partir do início (como se fosse um replay)
+        replayQuestionAudio();
+      } else if (showFeedback && data.explicacao) {
+        replayExplanationAudio();
+      }
+      setAutoTriggered(true);
+    }
+  }, [autoReadEnabled, autoTriggered, isReading, showFeedback, data.explicacao, replayQuestionAudio, replayExplanationAudio]);
+
+  // Pré-carrega a explicação (sem iniciar a reprodução) para evitar delay, se "Leitura auto" estiver ativo
+  useEffect(() => {
+    if (autoReadEnabled && data.explicacao) {
+      readText(data.explicacao, "explanation", true);
+    }
+  }, [autoReadEnabled, data.explicacao, readText]);
+
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
       {/* Cabeçalho com título e controles de áudio para a questão */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-white">
-            <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+            <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+              Questão {data.id}
+            </span>
           </span>
+          {/* Botão Play/Pause para questão */}
           <button
             onClick={toggleQuestionAudio}
             title="Play/Pause Questão"
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
           >
-            {questionAudioPlaying ? <PauseCircle className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />}
+            {questionAudioPlaying ? (
+              <PauseCircle className="w-6 h-6" />
+            ) : (
+              <PlayCircle className="w-6 h-6" />
+            )}
           </button>
         </div>
+        {/* Botão Replay para questão */}
         <div>
           <button
             onClick={replayQuestionAudio}
@@ -135,7 +173,7 @@ export default function Question({
         </div>
       )}
 
-      {isZoomed && (
+      {isZoomed && imageProps && (
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 flex justify-center items-center">
           <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl max-w-5xl max-h-screen overflow-auto relative">
             <button
@@ -146,7 +184,7 @@ export default function Question({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={imageProps?.img}
+              src={imageProps.img}
               alt="Imagem da questão ampliada"
               style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block', margin: '0 auto' }}
             />
@@ -154,7 +192,9 @@ export default function Question({
         </div>
       )}
 
-      <p className="text-gray-200 text-lg mb-8 leading-relaxed">{data.enunciado}</p>
+      <p className="text-gray-200 text-lg mb-8 leading-relaxed">
+        {data.enunciado}
+      </p>
 
       <div className="space-y-4">
         {['A', 'B', 'C', 'D'].map((opt) => {
@@ -246,13 +286,19 @@ export default function Question({
                   <Lightbulb className="w-5 h-5 inline-block" /> Explicação:
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Botão Play/Pause para explicação */}
                   <button
                     onClick={toggleExplanationAudio}
                     title="Play/Pause Explicação"
                     className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
                   >
-                    {explanationAudioPlaying ? <PauseCircle className="w-6 h-6" /> : <PlayCircle className="w-6 h-6" />}
+                    {explanationAudioPlaying ? (
+                      <PauseCircle className="w-6 h-6" />
+                    ) : (
+                      <PlayCircle className="w-6 h-6" />
+                    )}
                   </button>
+                  {/* Botão Replay para explicação */}
                   <button
                     onClick={replayExplanationAudio}
                     title="Replay Explicação"
