@@ -1,73 +1,56 @@
 import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly';
+import { Readable } from 'stream';
 import { createClient } from 'redis';
 
-const redisConfig = {
-  url: process.env.REDIS_URL,
-  password: process.env.REDIS_PASSWORD,
+// Configuração simplificada do Redis
+const redis = createClient({
+  url: process.env.REDIS_URL || process.env.STORAGE_URL, // Suporte a ambos
   socket: {
-    tls: true,
-    rejectUnauthorized: false
+    tls: (process.env.REDIS_URL || process.env.STORAGE_URL)?.startsWith('rediss://'),
+    rejectUnauthorized: process.env.NODE_ENV !== 'production'
   }
-};
+});
 
-let redisClient = null;
-
-async function getRedisClient() {
-  if (!redisClient) {
-    redisClient = createClient(redisConfig);
-    await redisClient.connect();
-  }
-  return redisClient;
-}
+// Conecta ao Redis imediatamente (como no Quickstart)
+redis.connect().catch(err => console.error('Erro ao conectar ao Redis:', err));
 
 const GLOBAL_LIMIT = 1000000;
 
-const voiceMap = {
-  'pt-BR-Neural2': 'Camila',
-  // Adicione mais mapeamentos conforme necessário
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return sendError(res, 405, 'Método não permitido');
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const { text, language = 'pt-BR', voice = 'pt-BR-Neural2' } = req.body;
+  const { text, language = 'pt-BR', voice = 'Camila' } = req.body;
 
   if (!text || typeof text !== 'string') {
-    return sendError(res, 400, 'Texto inválido ou não fornecido');
+    return res.status(400).json({ error: 'Texto inválido ou não fornecido' });
   }
 
   try {
-    const client = await getRedisClient();
-    
-    if (!client.isOpen) {
-      await client.connect();
-    }
+    // Verifica e reconecta ao Redis se necessário
+    if (!redis.isOpen) await redis.connect();
 
-    const currentTotal = Number(await client.get('totalCharsUsed')) || 0;
-
+    const currentTotal = Number(await redis.get('totalCharsUsed')) || 0;
     if (currentTotal + text.length > GLOBAL_LIMIT) {
-      return sendError(res, 429, 'Limite global excedido', {
+      return res.status(429).json({
+        error: 'Limite global excedido',
         remaining: GLOBAL_LIMIT - currentTotal
       });
     }
 
-    await client.incrBy('totalCharsUsed', text.length);
+    await redis.incrBy('totalCharsUsed', text.length);
 
+    // Cliente Polly simplificado
     const pollyClient = new PollyClient({ region: process.env.AWS_REGION });
-
-    const pollyVoice = 'Ricardo'; // Voz padrão se não houver mapeamento
-
     const command = new SynthesizeSpeechCommand({
       Text: text,
       OutputFormat: 'mp3',
-      VoiceId: pollyVoice,
+      VoiceId: voice,
       LanguageCode: language
     });
 
     const ttsResponse = await pollyClient.send(command);
-
     const audioStream = ttsResponse.AudioStream;
     const chunks = [];
     for await (const chunk of audioStream) {
@@ -81,47 +64,15 @@ export default async function handler(req, res) {
       charsUsed: text.length,
       totalUsed: currentTotal + text.length
     });
-
   } catch (error) {
-    await handleError(error, res, text);
+    console.error('Erro na API:', error);
+
+    // Reverte contagem no Redis se houver erro
+    if (text && redis.isOpen) {
+      await redis.decrBy('totalCharsUsed', text.length).catch(err => console.error('Erro ao reverter:', err));
+    }
+
+    const status = error.$metadata?.httpStatusCode || 500;
+    res.status(status).json({ error: error.message || 'Erro interno no servidor' });
   }
-}
-
-// Funções auxiliares
-function sendError(res, code, message, extras = {}) {
-  return res.status(code).json({ error: message, ...extras });
-}
-
-async function handleError(error, res, text) {
-  if (text && redisClient?.isOpen) {
-    await redisClient.decrBy('totalCharsUsed', text.length);
-  }
-
-  const errorInfo = {
-    message: 'Erro interno no servidor',
-    status: 500,
-    details: null
-  };
-
-  if (error.name === 'PollyServiceException') {
-    errorInfo.message = error.message;
-    errorInfo.status = error.$metadata.httpStatusCode || 500;
-    errorInfo.details = error.$response;
-  } else if (error instanceof Error) {
-    errorInfo.message = error.message;
-  }
-
-  console.error(`Erro na API: ${errorInfo.message}`, error.stack);
-
-  if (process.env.NODE_ENV === 'development') {
-    errorInfo.details = {
-      stack: error.stack,
-      raw: error.toString()
-    };
-  }
-
-  return res.status(errorInfo.status).json({
-    error: errorInfo.message,
-    ...(errorInfo.details && { details: errorInfo.details })
-  });
 }
