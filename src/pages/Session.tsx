@@ -227,7 +227,7 @@ const Session = () => {
       const response = await fetch('/api/readText', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, language: 'pt-BR', voice: 'pt-BR-Neural2' }),
+        body: JSON.stringify({ text, language: 'pt-BR', voice: 'Ricardo' }),
       });
       const data = await response.json();
       if (data.audioContent) {
