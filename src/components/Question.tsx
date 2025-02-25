@@ -22,8 +22,6 @@ interface QuestionProps {
   autoReadEnabled: boolean;
   readText: (text: string) => void;
   isReading: boolean;
-  currentAudioData: string | null;
-  onRepeat: () => void;
 }
 
 export default function Question({ 
@@ -33,14 +31,14 @@ export default function Question({
   autoReadEnabled, 
   readText,
   isReading,
-  currentAudioData,
-  onRepeat
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+  const [bufferedExplanationAudio, setBufferedExplanationAudio] = useState<string | null>(null);
 
+  // Se houver image_url, monta os dados para exibir a imagem; caso contrário, retorna null
   const imageProps = data.image_url
     ? {
         width: '100%',
@@ -52,7 +50,7 @@ export default function Question({
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
 
-  // Construir texto completo com alternativas
+  // Constrói o texto completo da questão com alternativas
   const getFullQuestionText = useCallback(() => {
     const alternatives = [
       data.alternativa_a,
@@ -67,16 +65,42 @@ export default function Question({
     return `${data.enunciado}. ${alternatives}`;
   }, [data]);
 
-  // Controle de leitura automática
+  // Pré-carrega o áudio da explicação, se houver, quando o TTS estiver ativo
   useEffect(() => {
-    if (autoReadEnabled && !isReading) {
-      if (showFeedback && data.explicacao) {
-        readText(data.explicacao);
-      } else if (!showFeedback) {
-        readText(getFullQuestionText());
-      }
+    if (autoReadEnabled && data.explicacao) {
+      fetch('/api/readText', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: data.explicacao, language: 'pt-BR', voice: 'pt-BR-Neural2-B' }),
+      })
+      .then(res => res.json())
+      .then(responseData => {
+        if (responseData.audioContent) {
+          const audioUrl = `data:audio/mp3;base64,${responseData.audioContent}`;
+          setBufferedExplanationAudio(audioUrl);
+        }
+      })
+      .catch(err => console.error('Erro ao pré-carregar explicação:', err));
     }
-  }, [autoReadEnabled, showFeedback, data.explicacao, getFullQuestionText, isReading, readText]);
+  }, [autoReadEnabled, data.explicacao]);
+
+  // Lê automaticamente o enunciado com alternativas se o feedback não estiver visível
+  useEffect(() => {
+    if (autoReadEnabled && !isReading && !showFeedback) {
+      readText(getFullQuestionText());
+    }
+  }, [autoReadEnabled, showFeedback, getFullQuestionText, isReading, readText]);
+
+  // Quando o feedback for mostrado e houver áudio pré-carregado, reproduz a explicação
+  useEffect(() => {
+    if (showFeedback && autoReadEnabled && bufferedExplanationAudio) {
+      const explanationAudio = new Audio(bufferedExplanationAudio);
+      explanationAudio.play();
+      return () => {
+        explanationAudio.pause();
+      };
+    }
+  }, [showFeedback, autoReadEnabled, bufferedExplanationAudio]);
 
   const handleConfirmAnswer = () => {
     if (!data?.resposta) {
@@ -100,28 +124,6 @@ export default function Question({
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
       <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
         <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
-        
-        {/* Botão de Repetir */}
-        {autoReadEnabled && currentAudioData && (
-          <button
-            onClick={onRepeat}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
-            title="Repetir leitura"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0z"/>
-            </svg>
-          </button>
-        )}
       </h2>
       {imageProps && (
         <div className="mb-8 flex justify-center">
@@ -129,8 +131,9 @@ export default function Question({
             className="rounded-lg overflow-hidden border-2 border-gray-700 relative"
             style={{ maxWidth: '600px' }}
           >
+            {/* Uso do operador "!" para informar ao TypeScript que imageProps não é nulo */}
             <img
-              src={imageProps.img}
+              src={imageProps!.img}
               alt="Imagem da questão"
               style={{ width: '100%', display: 'block', cursor: 'zoom-in' }}
               onClick={openZoom}
@@ -150,7 +153,7 @@ export default function Question({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={imageProps?.img}
+              src={imageProps!.img}
               alt="Imagem da questão ampliada"
               style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block', margin: '0 auto' }}
             />
@@ -190,15 +193,7 @@ export default function Question({
               <span
                 className={`
                   w-8 h-8 flex items-center justify-center rounded-lg
-                  ${
-                    isSelected
-                      ? showFeedback
-                        ? isCorrect
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
-                        : 'bg-blue-500'
-                      : 'bg-gray-700'
-                  }
+                  ${isSelected ? (showFeedback ? (isCorrect ? 'bg-green-500' : 'bg-red-500') : 'bg-blue-500') : 'bg-gray-700'}
                 `}
               >
                 {opt}
