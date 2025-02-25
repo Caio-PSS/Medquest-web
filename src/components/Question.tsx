@@ -30,13 +30,19 @@ export default function Question({
   onNext, 
   autoReadEnabled, 
   readText,
+<<<<<<< HEAD
   isReading
+=======
+  isReading,
+>>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
+  const [bufferedExplanationAudio, setBufferedExplanationAudio] = useState<string | null>(null);
 
+  // Se houver image_url, monta os dados para exibir a imagem; caso contrário, retorna null
   const imageProps = data.image_url
     ? {
         width: '100%',
@@ -48,7 +54,11 @@ export default function Question({
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
 
+<<<<<<< HEAD
   // Constrói o texto completo da questão (enunciado + alternativas)
+=======
+  // Constrói o texto completo da questão com alternativas
+>>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
   const getFullQuestionText = useCallback(() => {
     const alternatives = [
       data.alternativa_a,
@@ -63,6 +73,7 @@ export default function Question({
     return `${data.enunciado}. ${alternatives}`;
   }, [data]);
 
+<<<<<<< HEAD
   // Leitura automática: se autoReadEnabled estiver ativo, 
   // quando não houver reprodução em andamento, lê o enunciado ou a explicação
   useEffect(() => {
@@ -72,8 +83,44 @@ export default function Question({
       } else if (!showFeedback) {
         readText(getFullQuestionText(), "question");
       }
+=======
+  // Pré-carrega o áudio da explicação, se houver, quando o TTS estiver ativo
+  useEffect(() => {
+    if (autoReadEnabled && data.explicacao) {
+      fetch('/api/readText', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: data.explicacao, language: 'pt-BR', voice: 'pt-BR-Neural2-B' }),
+      })
+      .then(res => res.json())
+      .then(responseData => {
+        if (responseData.audioContent) {
+          const audioUrl = `data:audio/mp3;base64,${responseData.audioContent}`;
+          setBufferedExplanationAudio(audioUrl);
+        }
+      })
+      .catch(err => console.error('Erro ao pré-carregar explicação:', err));
+>>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
     }
-  }, [autoReadEnabled, showFeedback, data.explicacao, getFullQuestionText, isReading, readText]);
+  }, [autoReadEnabled, data.explicacao]);
+
+  // Lê automaticamente o enunciado com alternativas se o feedback não estiver visível
+  useEffect(() => {
+    if (autoReadEnabled && !isReading && !showFeedback) {
+      readText(getFullQuestionText());
+    }
+  }, [autoReadEnabled, showFeedback, getFullQuestionText, isReading, readText]);
+
+  // Quando o feedback for mostrado e houver áudio pré-carregado, reproduz a explicação
+  useEffect(() => {
+    if (showFeedback && autoReadEnabled && bufferedExplanationAudio) {
+      const explanationAudio = new Audio(bufferedExplanationAudio);
+      explanationAudio.play();
+      return () => {
+        explanationAudio.pause();
+      };
+    }
+  }, [showFeedback, autoReadEnabled, bufferedExplanationAudio]);
 
   const handleConfirmAnswer = () => {
     if (!data?.resposta) {
@@ -95,6 +142,7 @@ export default function Question({
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
+<<<<<<< HEAD
       {/* Cabeçalho com título e botão de reprodução da questão */}
       <div className="flex justify-between items-center mb-6">
         <span className="text-2xl font-bold text-white">
@@ -124,14 +172,20 @@ export default function Question({
         )}
       </div>
 
+=======
+      <h2 className="text-2xl font-bold mb-6 text-white flex items-center gap-2">
+        <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Questão {data.id}</span>
+      </h2>
+>>>>>>> 87b298f97693fbbe27203b330f51e9707f9920cd
       {imageProps && (
         <div className="mb-8 flex justify-center">
           <div
             className="rounded-lg overflow-hidden border-2 border-gray-700 relative"
             style={{ maxWidth: '600px' }}
           >
+            {/* Uso do operador "!" para informar ao TypeScript que imageProps não é nulo */}
             <img
-              src={imageProps.img}
+              src={imageProps!.img}
               alt="Imagem da questão"
               style={{ width: '100%', display: 'block', cursor: 'zoom-in' }}
               onClick={openZoom}
@@ -151,7 +205,7 @@ export default function Question({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={imageProps?.img}
+              src={imageProps!.img}
               alt="Imagem da questão ampliada"
               style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block', margin: '0 auto' }}
             />
@@ -191,15 +245,7 @@ export default function Question({
               <span
                 className={`
                   w-8 h-8 flex items-center justify-center rounded-lg
-                  ${
-                    isSelected
-                      ? showFeedback
-                        ? isCorrect
-                          ? 'bg-green-500'
-                          : 'bg-red-500'
-                        : 'bg-blue-500'
-                      : 'bg-gray-700'
-                  }
+                  ${isSelected ? (showFeedback ? (isCorrect ? 'bg-green-500' : 'bg-red-500') : 'bg-blue-500') : 'bg-gray-700'}
                 `}
               >
                 {opt}
