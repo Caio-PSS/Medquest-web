@@ -32,23 +32,19 @@ type Selection = {
 const Session = () => {
   const { authToken, authUser } = useAuth();
   const navigate = useNavigate();
-  
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  // Timer da questão: reinicia a cada nova questão
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  // Timer da sessão inteira: iniciado ao carregar as questões
   const [sessionStartTime, setSessionStartTime] = useState(Date.now());
-  // Estado "tick" para forçar atualização a cada segundo
   const [tick, setTick] = useState(0);
-  
+
   const [numQuestions, setNumQuestions] = useState(5);
   const [includeRepeats, setIncludeRepeats] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
   
-  // Estado para armazenar estatísticas da sessão, agora incluindo arrays de questões
   const [sessionStats, setSessionStats] = useState({
     totalQuestions: 0,
     correct: 0,
@@ -58,7 +54,10 @@ const Session = () => {
     correctComments: [] as string[],
   });
 
-  // Atualiza o tick a cada 1 segundo para atualizar os timers na tela
+  // Estado para controle de leitura automática (desativado por padrão)
+  const [autoReadEnabled, setAutoReadEnabled] = useState(false);
+
+  // Atualiza o tick a cada 1 segundo
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
@@ -97,6 +96,7 @@ const Session = () => {
     if (authToken) fetchCategories();
   }, [authToken]);
 
+  // Navega para feedback quando as questões terminam
   useEffect(() => {
     if (questions.length > 0 && currentQuestion >= questions.length) {
       navigate('/feedback', { state: sessionStats });
@@ -153,7 +153,7 @@ const Session = () => {
       const data = await res.json();
       setQuestions(data);
       
-      // Reinicia timers e estatísticas ao iniciar a sessão
+      // Reinicia timers e estatísticas
       setQuestionStartTime(Date.now());
       setSessionStartTime(Date.now());
       setCurrentQuestion(0);
@@ -194,7 +194,6 @@ const Session = () => {
         })
       });
   
-      // Atualiza as estatísticas da sessão, incluindo detalhes da questão
       setSessionStats(prev => ({
         ...prev,
         correct: prev.correct + (isCorrect ? 1 : 0),
@@ -214,18 +213,44 @@ const Session = () => {
     }
   };
 
-  // Ao avançar para a próxima questão, reinicia o timer da questão
   const handleNextQuestion = () => {
     setCurrentQuestion(prev => prev + 1);
     setQuestionStartTime(Date.now());
   };
 
-  // Cálculo dos tempos (em segundos)
   const questionElapsed = Math.floor((Date.now() - questionStartTime) / 1000);
   const sessionElapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
 
+  // Função que chama a nossa API serverless para ler o texto
+  async function readText(text: string) {
+    try {
+      const response = await fetch('/api/readText', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language: 'pt-BR', voice: 'pt-BR-Neural2' }),
+      });
+      const data = await response.json();
+      if (data.audioContent) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        audio.play();
+      }
+    } catch (error) {
+      console.error('Erro ao ler o texto:', error);
+    }
+  }
+
   return (
     <div className="p-4 min-h-screen bg-gray-950">
+      {/* Toggle de leitura automática */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setAutoReadEnabled(prev => !prev)}
+          className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition"
+        >
+          {autoReadEnabled ? 'Desativar' : 'Ativar'} Leitura Automática
+        </button>
+      </div>
+
       {questions.length === 0 ? (
         <div className="max-w-6xl mx-auto bg-gray-900 rounded-2xl shadow-xl p-8 mb-8 border border-gray-800">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">
@@ -339,7 +364,6 @@ const Session = () => {
         </div>
       ) : (
         <div className="max-w-6xl mx-auto">
-          {/* Cabeçalho com os timers (questão e sessão) */}
           <div className="bg-gray-900 rounded-2xl shadow-xl p-6 mb-6 border border-gray-800">
             <div className="flex justify-between items-center">
               <span className="text-white font-medium">
@@ -369,6 +393,8 @@ const Session = () => {
                 data={questions[currentQuestion]} 
                 onConfirm={handleAnswer}
                 onNext={handleNextQuestion}
+                autoReadEnabled={autoReadEnabled}
+                readText={readText}
               />
             )
           )}

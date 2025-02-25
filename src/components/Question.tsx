@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { CheckCircle, X, AlertTriangle, Lightbulb } from 'lucide-react';
 
 interface QuestionType {
@@ -19,9 +19,11 @@ interface QuestionProps {
   data: QuestionType;
   onConfirm: (answer: string, isCorrect: boolean) => void;
   onNext: () => void;
+  autoReadEnabled: boolean;
+  readText: (text: string) => void;
 }
 
-export default function Question({ data, onConfirm, onNext }: QuestionProps) {
+export default function Question({ data, onConfirm, onNext, autoReadEnabled, readText }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -37,6 +39,20 @@ export default function Question({ data, onConfirm, onNext }: QuestionProps) {
 
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
+
+  // Ao montar, se o modo auto-leitura estiver ativado, lê o enunciado
+  useEffect(() => {
+    if (autoReadEnabled) {
+      readText(data.enunciado);
+    }
+  }, [data.enunciado, autoReadEnabled, readText]);
+
+  // Quando o feedback for exibido, se houver explicação, dispara a leitura
+  useEffect(() => {
+    if (autoReadEnabled && showFeedback && data.explicacao) {
+      readText(data.explicacao);
+    }
+  }, [showFeedback, data.explicacao, autoReadEnabled, readText]);
 
   const handleConfirmAnswer = () => {
     if (!data?.resposta) {
