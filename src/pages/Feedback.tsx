@@ -1,5 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+
+const { authUser } = useAuth();
 
 const Feedback = () => {
   const { state } = useLocation();
@@ -106,7 +109,7 @@ const Feedback = () => {
       const response = await fetch('/api/generateCommentary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionStats }),
+        body: JSON.stringify({ sessionStats, user_id: authUser?.id }),
       });
       const data = await response.json();
       if (response.ok) {
