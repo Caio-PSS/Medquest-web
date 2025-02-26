@@ -2,11 +2,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const { authUser } = useAuth();
-
 const Feedback = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { authUser } = useAuth();
 
   const sessionStats = state || { 
     totalQuestions: 0, 
