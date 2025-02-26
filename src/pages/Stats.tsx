@@ -196,9 +196,10 @@ const Stats = () => {
     setStudyPlanError(null);
     try {
       const body = {
-        user_id: authUser?.id || 1, // utilize o id do usuário autenticado
+        user_id: authUser?.id, // utilize o id do usuário autenticado
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
+        statistics: overviewData,
       };
       const response = await fetch('/api/studyPlan', {
         method: 'POST',

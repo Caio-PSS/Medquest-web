@@ -33,14 +33,14 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: "Too Many Requests" });
   }
   
-  const { user_id, start_date, end_date } = req.body;
-  if (!user_id || !start_date || !end_date) {
+  const { user_id, start_date, end_date, statistics } = req.body;
+  if (!user_id || !start_date || !end_date || !statistics) {
     return res.status(400).json({ error: "Parâmetros ausentes" });
   }
 
   try {
     // 1. Buscar os feedbacks via API de feedback (ajuste a URL conforme sua configuração)
-    const feedbackApiUrl = process.env.FEEDBACK_API_URL || "https://medquest-floral-log-224.fly.dev/api/feedbacks";
+    const feedbackApiUrl = process.env.FEEDBACK_API_URL || "https://medquest-floral-log-224.fly.dev/api/feedbacks"; 
     const feedbackResponse = await fetch(
       `${feedbackApiUrl}?user_id=${user_id}&start_date=${start_date}&end_date=${end_date}`
     );
@@ -71,8 +71,11 @@ export default async function handler(req, res) {
 3. Fornecer orientações práticas, detalhadas e personalizadas que ajudem o estudante a organizar seus estudos e melhorar seu desempenho.
 4. Integrar de forma coerente as informações variadas presentes nos feedbacks – não apenas os erros, mas também estatísticas e pontos positivos.
 
-Feedbacks de desempenho:
+Feedbacks de desempenho de cada sessão do período:
 ${feedbackTexts}
+
+Estatísticas de desempenho do período:
+${JSON.stringify(statistics, null, 2)}
 
 Crie o plano de estudos seguindo as diretrizes acima.`;
 
