@@ -536,7 +536,7 @@ const Stats = () => {
                   disabled={studyPlanLoading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  {studyPlanLoading ? "Carregando..." : "Gerar plano de estudos"}
+                  {studyPlanLoading ? "Carregando..." : "Gerar plano de estudos (baseado no período selecionado)"}
                 </button>
               </div>
               {studyPlanError && (
