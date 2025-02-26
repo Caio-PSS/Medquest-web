@@ -51,7 +51,7 @@ export default async function handler(req, res) {
    
 2. **Raio-X dos Erros** (foco nos ${sessionStats.incorrect} erros):
    ${wrongComments.join("\n\n")}
-   ▸ Identifique os principais padrões nas questões que o estudante errou acima:
+   ▸ Identifique os principais padrões nas questões que o estudante errou acima (Crie um nome que descreva a questão no lugar do nome original):
    - **Padrão**: [Tema] + Motivo (ex: "Confundiu mecanismos fisiopatológicos? Interpretou exame incorretamente?")
    - **Correção**: Ação específica (ex: "Revisar fluxograma de diagnóstico para X")
    - **Impacto**: Como esse erro prejudica na prática clínica real?
@@ -85,9 +85,7 @@ Dados-chave:
     const commentary = response.choices[0].message.content;
 
     // Envia o comentário gerado para a API de feedbacks para armazenar no banco
-    const feedbackApiUrl =
-      process.env.FEEDBACK_API_URL ||
-      "https://medquest-floral-log-224.fly.dev/api/feedbacks";
+    const feedbackApiUrl = "https://medquest-floral-log-224.fly.dev/api/feedbacks";
     const feedbackPayload = {
       feedback_text: commentary,
       feedback_date: new Date().toISOString(),

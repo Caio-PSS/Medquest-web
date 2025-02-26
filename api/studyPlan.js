@@ -46,8 +46,12 @@ export default async function handler(req, res) {
     );
 
     if (!feedbackResponse.ok) {
-      throw new Error("Erro ao buscar feedbacks");
-    }
+        console.error("Feedback API retornou status:", feedbackRes.status);
+        const errorBody = await feedbackRes.text();
+        console.error("Corpo da resposta:", errorBody);
+        throw new Error("Erro ao buscar feedbacks");
+      }
+      
     const feedbackData = await feedbackResponse.json();
     // Supõe que a resposta esteja no formato: { feedbacks: [ { feedback_text: "..." }, ... ] }
     const feedbackTexts = feedbackData.feedbacks
