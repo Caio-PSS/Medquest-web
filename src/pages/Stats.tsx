@@ -4,6 +4,7 @@ import { BarChart, LineChart, PieChart, ScatterChart } from '../components/Chart
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ReactMarkdown from 'react-markdown';
+import { Cpu } from 'lucide-react';
 
 type TimeRange = 'day' | 'week' | 'month' | 'semestre' | 'year' | 'custom';
 
@@ -322,7 +323,7 @@ const Stats = () => {
         <>
           {/* Abas de Navegação */}
           <div className="tabs mb-8 border-b">
-            {(['overview', 'timeline', 'timeVsAccuracy', 'categories', 'subareas', 'studyplan'] as const).map((tab) => (
+            {(['overview', 'timeline', 'studyplan', 'categories', 'subareas', 'timeVsAccuracy'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setSelectedCategory(null); }}
@@ -521,20 +522,26 @@ const Stats = () => {
           )}
 
           {activeTab === 'studyplan' && (
-            <div className="p-6 bg-white rounded-xl shadow">
-              <button 
-                onClick={handleGenerateStudyPlan}
-                disabled={studyPlanLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {studyPlanLoading ? "Carregando..." : "Gerar plano de estudos"}
-              </button>
+            <div className="p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-8 h-8 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-800">Plano de Estudos</h2>
+                </div>
+                <button 
+                  onClick={handleGenerateStudyPlan}
+                  disabled={studyPlanLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  {studyPlanLoading ? "Carregando..." : "Gerar plano de estudos"}
+                </button>
+              </div>
               {studyPlanError && (
                 <p className="mt-4 text-red-600">{studyPlanError}</p>
               )}
               {studyPlan && (
-                <div className="prose max-w-none">
-                <ReactMarkdown>{studyPlan}</ReactMarkdown>
+                <div className="mt-4 prose max-w-none">
+                  <ReactMarkdown>{studyPlan}</ReactMarkdown>
                 </div>          
               )}
             </div>
