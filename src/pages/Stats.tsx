@@ -43,7 +43,7 @@ interface SubareaProgress {
 }
 
 const Stats = () => {
-  const { authToken } = useAuth();
+  const { authToken, authUser } = useAuth();
   const [overviewData, setOverviewData] = useState<OverviewStats | null>(null);
   const [categoryData, setCategoryData] = useState<CategoryProgress[]>([]);
   const [subareaData, setSubareaData] = useState<SubareaProgress[]>([]);
@@ -55,11 +55,16 @@ const Stats = () => {
     return d;
   });
   const [endDate, setEndDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'timeVsAccuracy' | 'categories' | 'subareas'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'timeVsAccuracy' | 'categories' | 'subareas' | 'studyplan'>('overview');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados para o plano de estudos
+  const [studyPlan, setStudyPlan] = useState<string | null>(null);
+  const [studyPlanLoading, setStudyPlanLoading] = useState(false);
+  const [studyPlanError, setStudyPlanError] = useState<string | null>(null);
 
   // Função para calcular média móvel (janela de 3 pontos)
   const calculateMovingAverage = (data: number[], windowSize: number): number[] => {
@@ -183,6 +188,37 @@ const Stats = () => {
     document.body.removeChild(link);
   };
 
+  // Função para chamar a API de plano de estudos
+  const handleGenerateStudyPlan = async () => {
+    setStudyPlanLoading(true);
+    setStudyPlan(null);
+    setStudyPlanError(null);
+    try {
+      const body = {
+        user_id: authUser?.id || 1, // utilize o id do usuário autenticado
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+      };
+      const response = await fetch('/api/studyplan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error("Erro ao gerar plano de estudos");
+      }
+      const data = await response.json();
+      setStudyPlan(data.studyPlan);
+    } catch (err: any) {
+      setStudyPlanError(err.message || "Erro desconhecido");
+    } finally {
+      setStudyPlanLoading(false);
+    }
+  };
+
   // Componente para exibir cartões de estatísticas
   const StatCard = ({ title, value, icon }: { title: string; value: string | number; icon: string }) => (
     <div className="p-4 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
@@ -284,7 +320,7 @@ const Stats = () => {
         <>
           {/* Abas de Navegação */}
           <div className="tabs mb-8 border-b">
-            {(['overview', 'timeline', 'timeVsAccuracy', 'categories', 'subareas'] as const).map((tab) => (
+            {(['overview', 'timeline', 'timeVsAccuracy', 'categories', 'subareas', 'studyplan'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setSelectedCategory(null); }}
@@ -295,13 +331,14 @@ const Stats = () => {
                 }`}
                 aria-label={`Exibir ${tab}`}
               >
-                {{
+                {({
                   overview: 'Visão Geral',
                   timeline: 'Linha do Tempo',
                   timeVsAccuracy: 'Tempo vs Acerto',
                   categories: 'Por Categoria',
-                  subareas: 'Por Subárea'
-                }[tab]}
+                  subareas: 'Por Subárea',
+                  studyplan: 'Plano de Estudos'
+                }[tab])}
               </button>
             ))}
           </div>
@@ -443,7 +480,7 @@ const Stats = () => {
             </div>
           )}
 
-{activeTab === 'categories' && (
+          {activeTab === 'categories' && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
               <BarChart
                 data={{
@@ -478,6 +515,26 @@ const Stats = () => {
                   scales: { y: { beginAtZero: true } }
                 }}
               />
+            </div>
+          )}
+
+          {activeTab === 'studyplan' && (
+            <div className="p-6 bg-white rounded-xl shadow">
+              <button 
+                onClick={handleGenerateStudyPlan}
+                disabled={studyPlanLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {studyPlanLoading ? "Carregando..." : "Gerar plano de estudos"}
+              </button>
+              {studyPlanError && (
+                <p className="mt-4 text-red-600">{studyPlanError}</p>
+              )}
+              {studyPlan && (
+                <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+                  <p>{studyPlan}</p>
+                </div>
+              )}
             </div>
           )}
         </>

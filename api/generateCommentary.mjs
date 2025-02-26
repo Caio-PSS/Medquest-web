@@ -53,7 +53,7 @@ const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "";
         - **Correção**: Ação específica (ex: "Revizar fluxograma de diagnóstico para X")
         - **Impacto**: Como esse erro prejudicaria na prática clínica real?
       
-      3. **Plano de Revisão** (baseado nos erros por tópicos):
+      3. **Plano de Revisão** (baseado nos erros por tópicos, indica quais os assuntos estudar por ordem de prioridade):
       
       Dados-chave:  
       ⏳ Tempo médio: ${(sessionStats.totalTime/sessionStats.totalQuestions).toFixed(1)}s/q  
