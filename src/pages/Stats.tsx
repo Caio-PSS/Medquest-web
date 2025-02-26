@@ -199,7 +199,7 @@ const Stats = () => {
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
       };
-      const response = await fetch('/api/studyplan', {
+      const response = await fetch('/api/studyPlan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
