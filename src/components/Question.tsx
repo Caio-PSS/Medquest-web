@@ -56,15 +56,31 @@ export default function Question({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
 
+  // Flags para evitar que o auto‑read seja disparado mais de uma vez por questão
+  const autoQuestionReadTriggered = useRef(false);
+  const autoExplanationReadTriggered = useRef(false);
+
+  // Refs de controle do pré‑load e do callback de pré‑carregamento (mantidas)
   const explanationPreloaded = useRef(false);
   const explanationDisplayedCalled = useRef(false);
 
+  // Quando a questão muda, reseta as flags
   useEffect(() => {
+    autoQuestionReadTriggered.current = false;
+    autoExplanationReadTriggered.current = false;
     explanationPreloaded.current = false;
     explanationDisplayedCalled.current = false;
   }, [data.id]);
 
-  // Pré-carrega o áudio da explicação (apenas uma vez)
+  // Se o autoRead for desativado, reseta as flags para evitar comportamento indesejado
+  useEffect(() => {
+    if (!autoReadEnabled) {
+      autoQuestionReadTriggered.current = false;
+      autoExplanationReadTriggered.current = false;
+    }
+  }, [autoReadEnabled]);
+
+  // Pré‑carrega o áudio da explicação (apenas uma vez)
   useEffect(() => {
     if (autoReadEnabled && data.explicacao && !explanationPreloaded.current) {
       readText(data.explicacao, "explanation", true);
@@ -73,13 +89,29 @@ export default function Question({
   }, [autoReadEnabled, data.explicacao, readText]);
 
   // Quando o feedback é exibido, se "Leitura auto" estiver ativa e houver explicação,
-  // chama o callback para pré-carregar o áudio da próxima questão (apenas uma vez)
+  // chama o callback para pré‑carregar o áudio da próxima questão (apenas uma vez)
   useEffect(() => {
     if (showFeedback && autoReadEnabled && data.explicacao && onExplanationDisplayed && !explanationDisplayedCalled.current) {
       onExplanationDisplayed();
       explanationDisplayedCalled.current = true;
     }
   }, [showFeedback, autoReadEnabled, data.explicacao, onExplanationDisplayed]);
+
+  // Auto-read da questão – dispara apenas uma vez por questão
+  useEffect(() => {
+    if (autoReadEnabled && !showFeedback && !isReading && !autoQuestionReadTriggered.current) {
+      replayQuestionAudio();
+      autoQuestionReadTriggered.current = true;
+    }
+  }, [autoReadEnabled, showFeedback, isReading, replayQuestionAudio]);
+
+  // Auto-read da explicação – dispara apenas uma vez por questão
+  useEffect(() => {
+    if (autoReadEnabled && showFeedback && data.explicacao && !isReading && !autoExplanationReadTriggered.current) {
+      replayExplanationAudio();
+      autoExplanationReadTriggered.current = true;
+    }
+  }, [autoReadEnabled, showFeedback, data.explicacao, isReading, replayExplanationAudio]);
 
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
@@ -115,19 +147,14 @@ export default function Question({
     return data[alternativeKey] || 'Alternativa não encontrada';
   };
 
-  // Se "Leitura auto" estiver ativa e não houver feedback, inicia automaticamente a leitura da questão
-  useEffect(() => {
-    if (autoReadEnabled && !showFeedback && !isReading) {
-      replayQuestionAudio();
-    }
-  }, [autoReadEnabled, showFeedback, isReading, replayQuestionAudio]);
+  // Ao clicar manualmente, se "Leitura auto" estiver ativa e não houver feedback, usamos as funções já definidas
+  const toggleQuestionAudioHandler = () => {
+    toggleQuestionAudio();
+  };
 
-  // Se o feedback estiver sendo exibido e houver explicação, inicia automaticamente a leitura da explicação
-  useEffect(() => {
-    if (autoReadEnabled && showFeedback && data.explicacao && !isReading) {
-      replayExplanationAudio();
-    }
-  }, [autoReadEnabled, showFeedback, data.explicacao, isReading, replayExplanationAudio]);
+  const replayQuestionAudioHandler = () => {
+    replayQuestionAudio();
+  };
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
@@ -140,7 +167,7 @@ export default function Question({
             </span>
           </span>
           <button
-            onClick={toggleQuestionAudio}
+            onClick={toggleQuestionAudioHandler}
             disabled={audioLoading}
             title="Play/Pause Questão"
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"
@@ -159,7 +186,7 @@ export default function Question({
         </div>
         <div>
           <button
-            onClick={replayQuestionAudio}
+            onClick={replayQuestionAudioHandler}
             disabled={audioLoading}
             title="Replay Questão"
             className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors disabled:opacity-50"

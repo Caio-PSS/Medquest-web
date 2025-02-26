@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Question from '../components/Question';
 import { useNavigate } from 'react-router-dom';
@@ -64,6 +64,9 @@ const Session = () => {
 
   // "Leitura auto" desativada inicialmente
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
+
+  // Cache para evitar múltiplas requisições para o mesmo texto
+  const audioCache = useRef<{ [key: string]: string }>({});
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
@@ -252,12 +255,29 @@ const Session = () => {
     setCurrentAudioType(null);
   };
 
+  // Função de leitura com cache para evitar múltiplas requisições para o mesmo texto
   async function readText(
     text: string,
     type: "question" | "explanation",
     preload?: boolean
   ) {
     try {
+      const cacheKey = type + '|' + text;
+      if (audioCache.current[cacheKey]) {
+        if (preload) {
+          if (type === "question" && !questionAudioData) {
+            setQuestionAudioData(audioCache.current[cacheKey]);
+          } else if (type === "explanation" && !explanationAudioData) {
+            setExplanationAudioData(audioCache.current[cacheKey]);
+          }
+          return;
+        }
+        if (type === "question" && !questionAudioData) {
+          setQuestionAudioData(audioCache.current[cacheKey]);
+        } else if (type === "explanation" && !explanationAudioData) {
+          setExplanationAudioData(audioCache.current[cacheKey]);
+        }
+      }
       if (!preload && currentAudio) {
         currentAudio.pause();
         setCurrentAudio(null);
@@ -281,6 +301,7 @@ const Session = () => {
         const data = await response.json();
         if (data.audioContent) {
           audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
+          audioCache.current[cacheKey] = audioUrl;
           if (type === "question") {
             setQuestionAudioData(audioUrl);
           } else {
@@ -304,6 +325,7 @@ const Session = () => {
       audio.play();
       setAudioLoading(false);
       audio.onended = () => {
+        // Não reinicia automaticamente; apenas finaliza a leitura
         setIsReading(false);
         setCurrentAudio(null);
         setCurrentAudioType(null);
@@ -317,6 +339,7 @@ const Session = () => {
     }
   }
 
+  // Ao clicar manualmente, se o áudio já estiver carregado, usa-o sem nova requisição
   const toggleQuestionAudio = () => {
     if (currentAudio && currentAudioType === "question") {
       if (!currentAudio.paused) {
@@ -324,6 +347,47 @@ const Session = () => {
       } else {
         currentAudio.play();
       }
+    } else {
+      if (questionAudioData) {
+        const audio = new Audio(questionAudioData);
+        setCurrentAudio(audio);
+        setCurrentAudioType("question");
+        audio.play();
+        audio.onended = () => {
+          setIsReading(false);
+          setCurrentAudio(null);
+          setCurrentAudioType(null);
+        };
+      } else {
+        const q = questions[currentQuestion];
+        if (!q) return;
+        let fullText = q.enunciado;
+        const alternatives = [];
+        if (q.alternativa_a) alternatives.push(`Alternativa A: ${q.alternativa_a}`);
+        if (q.alternativa_b) alternatives.push(`Alternativa B: ${q.alternativa_b}`);
+        if (q.alternativa_c) alternatives.push(`Alternativa C: ${q.alternativa_c}`);
+        if (q.alternativa_d) alternatives.push(`Alternativa D: ${q.alternativa_d}`);
+        fullText += ". " + alternatives.join(". ");
+        readText(fullText, "question");
+      }
+    }
+  };
+
+  const replayQuestionAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      setCurrentAudio(null);
+    }
+    if (questionAudioData) {
+      const audio = new Audio(questionAudioData);
+      setCurrentAudio(audio);
+      setCurrentAudioType("question");
+      audio.play();
+      audio.onended = () => {
+        setIsReading(false);
+        setCurrentAudio(null);
+        setCurrentAudioType(null);
+      };
     } else {
       const q = questions[currentQuestion];
       if (!q) return;
@@ -336,23 +400,6 @@ const Session = () => {
       fullText += ". " + alternatives.join(". ");
       readText(fullText, "question");
     }
-  };
-
-  const replayQuestionAudio = () => {
-    if (currentAudio) {
-      currentAudio.pause();
-      setCurrentAudio(null);
-    }
-    const q = questions[currentQuestion];
-    if (!q) return;
-    let fullText = q.enunciado;
-    const alternatives = [];
-    if (q.alternativa_a) alternatives.push(`Alternativa A: ${q.alternativa_a}`);
-    if (q.alternativa_b) alternatives.push(`Alternativa B: ${q.alternativa_b}`);
-    if (q.alternativa_c) alternatives.push(`Alternativa C: ${q.alternativa_c}`);
-    if (q.alternativa_d) alternatives.push(`Alternativa D: ${q.alternativa_d}`);
-    fullText += ". " + alternatives.join(". ");
-    readText(fullText, "question");
   };
 
   const toggleExplanationAudio = () => {
@@ -490,6 +537,7 @@ const Session = () => {
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => {
+                    // Se o autoRead estiver ativo, ao clicar novamente, pausa e desativa
                     if (autoReadEnabled && currentAudio) {
                       currentAudio.pause();
                       setCurrentAudio(null);
