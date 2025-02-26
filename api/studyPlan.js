@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     // 2. Compor o prompt para o Gemini com os feedbacks obtidos
     const prompt = `Você é um consultor educacional especialista em criar planos de estudos personalizados. Baseado nos feedbacks de desempenho detalhados abaixo – que contêm informações sobre erros, acertos, pontos fortes, estatísticas e oportunidades de melhoria – crie um plano de estudos completo e organizado. O plano deve:
 
-1. Incluir uma introdução motivacional que reconheça os pontos positivos do estudante e incentive a melhoria nas áreas críticas.
+1. Incluir uma introdução motivacional que reconheça os pontos positivos do estudante e incentive a melhoria nas áreas críticas, baseando-se nas estatísticas de desempenho do período.
 2. Estar estruturado em seções com títulos claros, como:
    - **Áreas de Melhoria:** Identificando os principais desafios.
    - **Pontos Fortes:** Destacando acertos e habilidades.
