@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   CheckCircle, X, AlertTriangle, Lightbulb, 
   PlayCircle, PauseCircle, RotateCcw 
@@ -32,6 +32,7 @@ interface QuestionProps {
   questionAudioPlaying: boolean;
   explanationAudioPlaying: boolean;
   audioLoading: boolean;
+  onExplanationDisplayed?: () => void;
 }
 
 export default function Question({
@@ -48,19 +49,37 @@ export default function Question({
   questionAudioPlaying,
   explanationAudioPlaying,
   audioLoading,
+  onExplanationDisplayed,
 }: QuestionProps) {
   const [selected, setSelected] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
 
-  const imageProps = data.image_url
-    ? {
-        width: '100%',
-        zoomPosition: 'original',
-        img: `https://medquest-floral-log-224.fly.dev${data.image_url}.png`,
-      }
-    : null;
+  const explanationPreloaded = useRef(false);
+  const explanationDisplayedCalled = useRef(false);
+
+  useEffect(() => {
+    explanationPreloaded.current = false;
+    explanationDisplayedCalled.current = false;
+  }, [data.id]);
+
+  // Pré-carrega o áudio da explicação (apenas uma vez)
+  useEffect(() => {
+    if (autoReadEnabled && data.explicacao && !explanationPreloaded.current) {
+      readText(data.explicacao, "explanation", true);
+      explanationPreloaded.current = true;
+    }
+  }, [autoReadEnabled, data.explicacao, readText]);
+
+  // Quando o feedback é exibido, se "Leitura auto" estiver ativa e houver explicação,
+  // chama o callback para pré-carregar o áudio da próxima questão (apenas uma vez)
+  useEffect(() => {
+    if (showFeedback && autoReadEnabled && data.explicacao && onExplanationDisplayed && !explanationDisplayedCalled.current) {
+      onExplanationDisplayed();
+      explanationDisplayedCalled.current = true;
+    }
+  }, [showFeedback, autoReadEnabled, data.explicacao, onExplanationDisplayed]);
 
   const openZoom = useCallback(() => setIsZoomed(true), []);
   const closeZoom = useCallback(() => setIsZoomed(false), []);
@@ -96,28 +115,19 @@ export default function Question({
     return data[alternativeKey] || 'Alternativa não encontrada';
   };
 
-  // Quando não há feedback, se "Leitura auto" estiver ativa e não houver leitura em andamento,
-  // inicia automaticamente a leitura da questão (como se tivesse clicado no botão Replay).
+  // Se "Leitura auto" estiver ativa e não houver feedback, inicia automaticamente a leitura da questão
   useEffect(() => {
     if (autoReadEnabled && !showFeedback && !isReading) {
       replayQuestionAudio();
     }
   }, [autoReadEnabled, showFeedback, isReading, replayQuestionAudio]);
 
-  // Quando o feedback é exibido, se "Leitura auto" estiver ativa e houver explicação,
-  // inicia automaticamente a leitura da explicação.
+  // Se o feedback estiver sendo exibido e houver explicação, inicia automaticamente a leitura da explicação
   useEffect(() => {
     if (autoReadEnabled && showFeedback && data.explicacao && !isReading) {
       replayExplanationAudio();
     }
   }, [autoReadEnabled, showFeedback, data.explicacao, isReading, replayExplanationAudio]);
-
-  // Pré-carrega a explicação para evitar delay se "Leitura auto" estiver ativa
-  useEffect(() => {
-    if (autoReadEnabled && data.explicacao) {
-      readText(data.explicacao, "explanation", true);
-    }
-  }, [autoReadEnabled, data.explicacao, readText]);
 
   return (
     <div className="max-w-4xl mx-auto bg-gray-900 rounded-2xl p-8 shadow-2xl">
@@ -166,14 +176,14 @@ export default function Question({
         </div>
       </div>
 
-      {imageProps && (
+      {data.image_url && (
         <div className="mb-8 flex justify-center">
           <div
             className="rounded-lg overflow-hidden border-2 border-gray-700 relative"
             style={{ maxWidth: '600px' }}
           >
             <img
-              src={imageProps.img}
+              src={`https://medquest-floral-log-224.fly.dev${data.image_url}.png`}
               alt="Imagem da questão"
               style={{ width: '100%', display: 'block', cursor: 'zoom-in' }}
               onClick={openZoom}
@@ -182,7 +192,7 @@ export default function Question({
         </div>
       )}
 
-      {isZoomed && imageProps && (
+      {isZoomed && data.image_url && (
         <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 flex justify-center items-center">
           <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl max-w-5xl max-h-screen overflow-auto relative">
             <button
@@ -193,7 +203,7 @@ export default function Question({
               <X className="w-5 h-5" />
             </button>
             <img
-              src={imageProps.img}
+              src={`https://medquest-floral-log-224.fly.dev${data.image_url}.png`}
               alt="Imagem da questão ampliada"
               style={{ maxWidth: '100%', maxHeight: '90vh', display: 'block', margin: '0 auto' }}
             />

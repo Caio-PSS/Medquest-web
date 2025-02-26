@@ -49,6 +49,7 @@ const Session = () => {
   const [currentAudioType, setCurrentAudioType] = useState<"question" | "explanation" | null>(null);
   const [questionAudioData, setQuestionAudioData] = useState<string | null>(null);
   const [explanationAudioData, setExplanationAudioData] = useState<string | null>(null);
+  const [preloadedQuestionAudio, setPreloadedQuestionAudio] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
 
@@ -204,10 +205,44 @@ const Session = () => {
     }
   };
 
+  // Função para pré-carregar o áudio da próxima questão
+  const preloadNextQuestionAudio = async () => {
+    if (currentQuestion + 1 < questions.length) {
+      const nextQ = questions[currentQuestion + 1];
+      let fullText = nextQ.enunciado;
+      const alternatives = [];
+      if (nextQ.alternativa_a) alternatives.push(`Alternativa A: ${nextQ.alternativa_a}`);
+      if (nextQ.alternativa_b) alternatives.push(`Alternativa B: ${nextQ.alternativa_b}`);
+      if (nextQ.alternativa_c) alternatives.push(`Alternativa C: ${nextQ.alternativa_c}`);
+      if (nextQ.alternativa_d) alternatives.push(`Alternativa D: ${nextQ.alternativa_d}`);
+      fullText += ". " + alternatives.join(". ");
+
+      try {
+        const response = await fetch('/api/readText', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: fullText, language: 'pt-BR', voice: 'pt-BR-Neural2-B' }),
+        });
+        const data = await response.json();
+        if (data.audioContent) {
+          const audioUrl = `data:audio/mp3;base64,${data.audioContent}`;
+          setPreloadedQuestionAudio(audioUrl);
+        }
+      } catch (error) {
+        console.error("Erro ao pré-carregar áudio da próxima questão:", error);
+      }
+    }
+  };
+
   const handleNextQuestion = () => {
     setCurrentQuestion(prev => prev + 1);
     setQuestionStartTime(Date.now());
-    setQuestionAudioData(null);
+    if (preloadedQuestionAudio) {
+      setQuestionAudioData(preloadedQuestionAudio);
+      setPreloadedQuestionAudio(null);
+    } else {
+      setQuestionAudioData(null);
+    }
     setExplanationAudioData(null);
     if (currentAudio) {
       currentAudio.pause();
@@ -503,6 +538,7 @@ const Session = () => {
                   questionAudioPlaying={!!questionAudioPlaying}
                   explanationAudioPlaying={!!explanationAudioPlaying}
                   audioLoading={audioLoading}
+                  onExplanationDisplayed={preloadNextQuestionAudio}
                 />
               )
             )}
