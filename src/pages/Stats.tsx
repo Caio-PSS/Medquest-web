@@ -328,12 +328,12 @@ const Stats = () => {
                 key={tab}
                 onClick={() => { setActiveTab(tab); setSelectedCategory(null); }}
                 className={`
-                  px-4 py-2 mr-4 transition-colors focus:outline-none
+                  relative px-4 py-2 mr-4 transition-colors focus:outline-none
                   ${activeTab === tab
                     ? 'border-b-2 border-blue-600 text-blue-600'
                     : 'text-gray-600 hover:text-blue-500'
                   }
-                  ${tab === 'studyplan' ? 'bg-sky-300 font-bold animate-pulse' : ''}
+                  ${tab === 'studyplan' ? 'border-2 border-sky-400 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200' : ''}
                 `}
                 aria-label={`Exibir ${tab}`}
               >
@@ -345,6 +345,11 @@ const Stats = () => {
                   subareas: 'Por Subárea',
                   studyplan: 'Plano de Estudos'
                 }[tab])}
+                {tab === 'studyplan' && (
+                  <span className="absolute -top-2 -right-2 bg-sky-500 text-white text-xs px-1 rounded-full">
+                    Novo
+                  </span>
+                )}
               </button>
             ))}
           </div>
