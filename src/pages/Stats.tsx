@@ -50,7 +50,7 @@ const Stats = () => {
   const [categoryData, setCategoryData] = useState<CategoryProgress[]>([]);
   const [subareaData, setSubareaData] = useState<SubareaProgress[]>([]);
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+  const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [startDate, setStartDate] = useState<Date>(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
@@ -327,11 +327,14 @@ const Stats = () => {
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setSelectedCategory(null); }}
-                className={`px-4 py-2 mr-4 transition-colors focus:outline-none ${
-                  activeTab === tab
+                className={`
+                  px-4 py-2 mr-4 transition-colors focus:outline-none
+                  ${activeTab === tab
                     ? 'border-b-2 border-blue-600 text-blue-600'
                     : 'text-gray-600 hover:text-blue-500'
-                }`}
+                  }
+                  ${tab === 'studyplan' ? 'bg-sky-300 font-bold animate-pulse' : ''}
+                `}
                 aria-label={`Exibir ${tab}`}
               >
                 {({
