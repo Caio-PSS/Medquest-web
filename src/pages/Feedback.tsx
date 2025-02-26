@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import ReactMarkdown from 'react-markdown';
+
 
 const Feedback = () => {
   const { state } = useLocation();
@@ -27,82 +29,7 @@ const Feedback = () => {
     generateCommentary();
   }, []);
 
-  const formatCommentary = (text: string) => {
-    // Expressão regular para identificar padrões
-    const headerMatch = text.match(/^(#{2,3})\s(.*)/);
-    const boldRegex = /\*\*(.*?)\*\*/g;
-  
-    return text.split('\n').map((line: string, index: number) => {
-      // Processar cabeçalhos
-      if (line.startsWith('## ')) {
-        const content = line.replace('## ', '');
-        return (
-          <h3 key={index} className="text-xl font-bold text-gray-800 mt-6 mb-3">
-            {content.split(boldRegex).map((part, partIndex) => 
-              partIndex % 2 === 1 ? (
-                <strong key={partIndex} className="font-semibold">
-                  {part}
-                </strong>
-              ) : (
-                part
-              )
-            )}
-          </h3>
-        );
-      }
-  
-      if (line.startsWith('### ')) {
-        const content = line.replace('### ', '');
-        return (
-          <h4 key={index} className="font-semibold text-gray-800 mt-4 mb-2">
-            {content.split(boldRegex).map((part, partIndex) => 
-              partIndex % 2 === 1 ? (
-                <strong key={partIndex} className="font-semibold">
-                  {part}
-                </strong>
-              ) : (
-                part
-              )
-            )}
-          </h4>
-        );
-      }
-  
-      // Processar negritos e texto normal
-      const elements = [];
-      let lastIndex = 0;
-      let match;
-  
-      while ((match = boldRegex.exec(line)) !== null) {
-        // Texto antes do negrito
-        if (match.index > lastIndex) {
-          elements.push(line.slice(lastIndex, match.index));
-        }
-        
-        // Texto em negrito
-        elements.push(
-          <strong key={elements.length} className="font-semibold">
-            {match[1]}
-          </strong>
-        );
-        
-        lastIndex = match.index + match[0].length;
-      }
-  
-      // Texto restante após o último negrito
-      if (lastIndex < line.length) {
-        elements.push(line.slice(lastIndex));
-      }
-  
-      return (
-        <p key={index} className="text-gray-600 mb-3 leading-relaxed">
-          {elements}
-        </p>
-      );
-    });
-  };
-
-  const generateCommentary = async () => {
+    const generateCommentary = async () => {
     setIsGenerating(true);
     try {
       const response = await fetch('/api/generateCommentary', {
@@ -161,7 +88,7 @@ const Feedback = () => {
         ) : (
           commentary && (
             <div className="space-y-4 prose max-w-none">
-              {formatCommentary(commentary)}
+              <ReactMarkdown>{commentary}</ReactMarkdown>
             </div>
           )
         )}

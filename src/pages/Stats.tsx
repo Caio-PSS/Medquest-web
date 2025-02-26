@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { BarChart, LineChart, PieChart, ScatterChart } from '../components/Charts';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import ReactMarkdown from 'react-markdown';
 
 type TimeRange = 'day' | 'week' | 'month' | 'semestre' | 'year' | 'custom';
 
@@ -531,9 +532,9 @@ const Stats = () => {
                 <p className="mt-4 text-red-600">{studyPlanError}</p>
               )}
               {studyPlan && (
-                <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-                  <p>{studyPlan}</p>
-                </div>
+                <div className="prose max-w-none">
+                <ReactMarkdown>{studyPlan}</ReactMarkdown>
+                </div>          
               )}
             </div>
           )}
