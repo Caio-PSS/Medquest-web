@@ -13,7 +13,7 @@ const AuthCheck = () => {
     // Se não houver token e não estiver na página de login, redireciona.
     if (!isLoading && !authToken && location.pathname !== '/login') {
       logout();
-      navigate('/login', { replace: true });
+      window.location.href = '/login';
     }
   }, [authToken, isLoading, logout, navigate, location.pathname]);
 
