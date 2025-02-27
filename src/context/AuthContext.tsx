@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [inactivityTimeoutId, setInactivityTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [tokenExpirationTimeoutId, setTokenExpirationTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const decodeToken = useCallback((token: string): AuthUser | null => {
@@ -48,6 +49,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Sistema de logout - declarado antes de ser usado em scheduleTokenExpiration
+  const logout = useCallback(() => {
+    localStorage.removeItem('medquest_token');
+    localStorage.removeItem('inactivity_expiry');
+    setAuthToken(null);
+    setAuthUser(null);
+    if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
+    if (tokenExpirationTimeoutId) clearTimeout(tokenExpirationTimeoutId);
+  }, [inactivityTimeoutId, tokenExpirationTimeoutId]);
+
+  // Agenda o logout no exato momento de expiração do token
+  const scheduleTokenExpiration = useCallback((token: string) => {
+    try {
+      const decoded: DecodedToken = jwtDecode(token);
+      const expirationTime = decoded.exp * 1000;
+      const delay = expirationTime - Date.now();
+      if (delay > 0) {
+        const timeoutId = setTimeout(() => {
+          logout();
+          window.location.href = '/login';
+        }, delay);
+        setTokenExpirationTimeoutId(timeoutId);
+      } else {
+        logout();
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      logout();
+      window.location.href = '/login';
+    }
+  }, [logout]);
+
   // Verificação inicial do token
   useEffect(() => {
     const token = localStorage.getItem('medquest_token');
@@ -56,34 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (user) {
         setAuthToken(token);
         setAuthUser(user);
+        scheduleTokenExpiration(token);
       } else {
-        localStorage.removeItem('medquest_token'); // Remove token inválido
+        localStorage.removeItem('medquest_token');
       }
     }
-    setIsLoading(false); // Finaliza o carregamento
-  }, [decodeToken]);
-
-  // Sistema de logout
-  const logout = useCallback(() => {
-    localStorage.removeItem('medquest_token');
-    localStorage.removeItem('inactivity_expiry');
-    setAuthToken(null);
-    setAuthUser(null);
-    if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-  }, [inactivityTimeoutId]);
-
-  // Verificação de expiração do token
-  const checkTokenExpiration = useCallback(() => {
-    const token = localStorage.getItem('medquest_token');
-    if (!token) return;
-
-    try {
-      const decoded: DecodedToken = jwtDecode(token);
-      if (Date.now() >= decoded.exp * 1000) logout();
-    } catch (error) {
-      logout();
-    }
-  }, [logout]);
+    setIsLoading(false);
+  }, [decodeToken, scheduleTokenExpiration]);
 
   // Sistema de inatividade
   const resetInactivityTimeout = useCallback(() => {
@@ -91,6 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const newTimeoutId = setTimeout(() => {
       logout();
+      window.location.href = '/login';
     }, INACTIVITY_TIMEOUT);
 
     setInactivityTimeoutId(newTimeoutId);
@@ -116,21 +129,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback((token: string) => {
     const user = decodeToken(token);
     if (!user) {
-      localStorage.removeItem('medquest_token'); // Limpa token inválido
+      localStorage.removeItem('medquest_token');
       return;
     }
 
     localStorage.setItem('medquest_token', token);
-    setAuthToken(token); // Atualiza estado imediatamente
+    setAuthToken(token);
     setAuthUser(user);
     resetInactivityTimeout();
-  }, [decodeToken, resetInactivityTimeout]);
-
-  // Verificação periódica do token
-  useEffect(() => {
-    const checkAuthState = setInterval(checkTokenExpiration, 60000);
-    return () => clearInterval(checkAuthState);
-  }, [checkTokenExpiration]);
+    scheduleTokenExpiration(token);
+  }, [decodeToken, resetInactivityTimeout, scheduleTokenExpiration]);
 
   return (
     <AuthContext.Provider value={{
