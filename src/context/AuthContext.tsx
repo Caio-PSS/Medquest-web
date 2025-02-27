@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
 interface DecodedToken {
@@ -35,9 +35,10 @@ const INACTIVITY_TIMEOUT = 6 * 60 * 60 * 1000; // 6 horas
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
-  const [inactivityTimeoutId, setInactivityTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  const [tokenExpirationTimeoutId, setTokenExpirationTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tokenExpirationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const decodeToken = useCallback((token: string): AuthUser | null => {
     try {
@@ -49,39 +50,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Sistema de logout - declarado antes de ser usado em scheduleTokenExpiration
+  // 🔹 Função de logout otimizada
   const logout = useCallback(() => {
     localStorage.removeItem('medquest_token');
     localStorage.removeItem('inactivity_expiry');
+
     setAuthToken(null);
     setAuthUser(null);
-    if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-    if (tokenExpirationTimeoutId) clearTimeout(tokenExpirationTimeoutId);
-  }, [inactivityTimeoutId, tokenExpirationTimeoutId]);
 
-  // Agenda o logout no exato momento de expiração do token
+    if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+    if (tokenExpirationTimeoutRef.current) clearTimeout(tokenExpirationTimeoutRef.current);
+
+    window.location.href = '/login'; // Redirecionamento direto para evitar atrasos
+  }, []);
+
+  // 🔹 Agenda logout para quando o token expirar
   const scheduleTokenExpiration = useCallback((token: string) => {
     try {
       const decoded: DecodedToken = jwtDecode(token);
       const expirationTime = decoded.exp * 1000;
       const delay = expirationTime - Date.now();
+
       if (delay > 0) {
-        const timeoutId = setTimeout(() => {
-          logout();
-          window.location.href = '/login';
-        }, delay);
-        setTokenExpirationTimeoutId(timeoutId);
+        tokenExpirationTimeoutRef.current = setTimeout(logout, delay);
       } else {
         logout();
-        window.location.href = '/login';
       }
     } catch (error) {
       logout();
-      window.location.href = '/login';
     }
   }, [logout]);
 
-  // Verificação inicial do token
+  // 🔹 Verificação inicial do token ao carregar a página
   useEffect(() => {
     const token = localStorage.getItem('medquest_token');
     if (token) {
@@ -97,23 +97,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, [decodeToken, scheduleTokenExpiration]);
 
-  // Sistema de inatividade
+  // 🔹 Reseta o timer de inatividade
   const resetInactivityTimeout = useCallback(() => {
-    if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
+    if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
 
-    const newTimeoutId = setTimeout(() => {
-      logout();
-      window.location.href = '/login';
-    }, INACTIVITY_TIMEOUT);
-
-    setInactivityTimeoutId(newTimeoutId);
+    inactivityTimeoutRef.current = setTimeout(logout, INACTIVITY_TIMEOUT);
     localStorage.setItem('inactivity_expiry', (Date.now() + INACTIVITY_TIMEOUT).toString());
-  }, [logout, inactivityTimeoutId]);
+  }, [logout]);
 
-  // Event listeners de atividade
+  // 🔹 Detecta atividade do usuário para resetar timeout
   useEffect(() => {
     const handleActivity = () => resetInactivityTimeout();
-    
+
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('touchstart', handleActivity);
@@ -125,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [resetInactivityTimeout]);
 
-  // Função de login
+  // 🔹 Login otimizado
   const login = useCallback((token: string) => {
     const user = decodeToken(token);
     if (!user) {
