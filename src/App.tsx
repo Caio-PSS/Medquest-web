@@ -11,6 +11,7 @@ import Register from './components/Register';
 import AuthCheck from './components/AuthCheck';
 import GamificationPage from './pages/GamificationPage';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="/gamification" element={<GamificationPage />} />
           </Route>
         </Routes>
+        <SpeedInsights />
         <Analytics />
       </AuthProvider>
   );
