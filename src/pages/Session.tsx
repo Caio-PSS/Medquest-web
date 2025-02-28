@@ -352,6 +352,8 @@ const Session = () => {
         const audio = new Audio(questionAudioData);
         setCurrentAudio(audio);
         setCurrentAudioType("question");
+        audio.preservesPitch = true; // Garante que o pitch seja mantido
+        audio.playbackRate = 1.5;    // Aumenta a velocidade em 50%
         audio.play();
         audio.onended = () => {
           setIsReading(false);
@@ -382,6 +384,8 @@ const Session = () => {
       const audio = new Audio(questionAudioData);
       setCurrentAudio(audio);
       setCurrentAudioType("question");
+      audio.preservesPitch = true; // Garante que o pitch seja mantido
+      audio.playbackRate = 1.5;    // Aumenta a velocidade em 50%
       audio.play();
       audio.onended = () => {
         setIsReading(false);

@@ -199,18 +199,26 @@ const GamificationPage = () => {
                   </div>
 
                   <div className="mt-3">
-                    {challenge.tipo === 'desempenho' && challenge.categoria_meta && (
+                    {challenge.tipo === 'desempenho' ? (
+                      <>
+                        {challenge.categoria_meta && (
+                          <p className="text-sm">
+                            <span className="font-medium">Categoria:</span> {challenge.categoria_meta}
+                          </p>
+                        )}
+                        <p className="text-sm">
+                          <span className="font-medium">Meta:</span> {challenge.percentual_meta}% de acerto
+                        </p>
+                      </>
+                    ) : challenge.quantidade_meta !== undefined ? (
                       <p className="text-sm">
-                        <span className="font-medium">Categoria:</span> {challenge.categoria_meta}
+                        <span className="font-medium">Meta:</span> {Math.floor((challenge.progresso_atual / 100) * challenge.quantidade_meta)} / {challenge.quantidade_meta} questões
+                      </p>
+                    ) : (
+                      <p className="text-sm">
+                        <span className="font-medium">Meta:</span> Meta indefinida
                       </p>
                     )}
-                    <p className="text-sm">
-                      <span className="font-medium">Meta:</span> {
-                        challenge.tipo === 'desempenho'
-                          ? `${challenge.percentual_meta}% de acerto`
-                          : `${challenge.quantidade_meta} questões`
-                      }
-                    </p>
                   </div>
 
                   <div className="mt-4">
