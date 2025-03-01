@@ -24,6 +24,7 @@ type Challenge = {
   nome: string;
   tipo: 'desempenho' | 'quantidade';
   percentual_meta?: number;
+  quantidade_meta?: number; // Adicionada para desafios do tipo "quantidade"
   progresso_atual: number;
   status?: string;
 };
@@ -45,7 +46,7 @@ const Dashboard = () => {
   const [range, setRange] = useState('semestre'); // Valor padrão: semestre
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [progressCheckedInSession, setProgressCheckedInSession] = useState(false); // 🚩 Flag de sessão
+  const [progressCheckedInSession, setProgressCheckedInSession] = useState(false); // Flag para evitar chamadas repetidas
 
   const rangeOptions = [
     { label: 'Semana', value: 'week' },
@@ -54,6 +55,7 @@ const Dashboard = () => {
     { label: 'Ano', value: 'year' }
   ];
 
+  // Busca as estatísticas gerais do usuário
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -77,16 +79,17 @@ const Dashboard = () => {
     }
   }, [authToken, range]);
 
+  // Busca os dados de gamificação (desafios e conquistas)
   useEffect(() => {
     const fetchGamificationData = async () => {
       try {
-        // 🚩 Verificar flag antes de chamar check-progress
+        // Verifica a flag antes de chamar a rota de check-progress
         if (!progressCheckedInSession && authToken) {
           await fetch('https://medquest-floral-log-224.fly.dev/api/gamification/check-progress', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${authToken}` }
+            method: 'POST',
+            headers: { Authorization: `Bearer ${authToken}` }
           });
-          setProgressCheckedInSession(true); // 🚩 Definir flag como true após a primeira chamada
+          setProgressCheckedInSession(true);
         }
         const [challengesRes, achievementsRes] = await Promise.all([
           fetch('https://medquest-floral-log-224.fly.dev/api/gamification/challenges', {
@@ -243,68 +246,74 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
-        {/* Prévia de Desafios e Conquistas */}
-          <div className="space-y-6">
-            {/* Seção de Desafios */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Desafios em Progresso</h2>
-              {challenges.length > 0 ? (
-                <div className="space-y-4">
-                  {challenges.map((challenge) => (
-                    <div key={challenge.id} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">{challenge.nome}</span>
-                        <span className={`${challenge.status === 'concluido' ? 'text-green-600' : 'text-gray-600'}`}>
-                          {challenge.progresso_atual.toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full relative">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            challenge.status === 'concluido' ? 'bg-green-500' : 'bg-blue-500'
-                          }`}
-                          style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
-                        />
-                        {challenge.tipo === 'desempenho' && challenge.percentual_meta !== undefined && (
-                          <div
-                            className="absolute top-0 h-2 w-0.5 bg-red-500"
-                            style={{ left: `${challenge.percentual_meta}%` }}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-2">Nenhum desafio ativo no momento.</p>
-              )}
-            </div>
 
-            {/* Seção de Troféus */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Troféus Conquistados</h2>
-              {achievements.length > 0 ? (
-                <div className="grid grid-cols-4 gap-3">
-                  {achievements.map((achievement) => {
-                    const level = achievement.level || ((achievement.id % 3) + 1);
-                    const style = achievementStyles[level as keyof typeof achievementStyles] || achievementStyles[1];
-                    const Icon = style.Icon;
-                    
-                    return (
+        {/* Prévia de Desafios e Conquistas */}
+        <div className="space-y-6">
+          {/* Seção de Desafios */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Desafios em Progresso</h2>
+            {challenges.length > 0 ? (
+              <div className="space-y-4">
+                {challenges.map((challenge) => (
+                  <div key={challenge.id} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{challenge.nome}</span>
+                      <span className={`${challenge.status === 'concluido' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {challenge.tipo === 'desempenho'
+                          ? `${challenge.progresso_atual.toFixed(0)}%`
+                          : challenge.quantidade_meta !== undefined 
+                            ? `${Math.floor((challenge.progresso_atual / 100) * challenge.quantidade_meta)}/${challenge.quantidade_meta}`
+                            : `${challenge.progresso_atual.toFixed(0)}%`
+                        }
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full relative">
                       <div
-                        key={achievement.id}
-                        className={`p-2 rounded-lg ${style.bgColor} flex items-center justify-center`}
-                      >
-                        <Icon className={`w-6 h-6 ${style.textColor}`} />
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-2">Nenhum troféu conquistado ainda.</p>
-              )}
-            </div>
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          challenge.status === 'concluido' ? 'bg-green-500' : 'bg-blue-500'
+                        }`}
+                        style={{ width: `${Math.min(challenge.progresso_atual, 100)}%` }}
+                      />
+                      {challenge.tipo === 'desempenho' && challenge.percentual_meta !== undefined && (
+                        <div
+                          className="absolute top-0 h-2 w-0.5 bg-red-500"
+                          style={{ left: `${challenge.percentual_meta}%` }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-2">Nenhum desafio ativo no momento.</p>
+            )}
           </div>
+
+          {/* Seção de Troféus */}
+          <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Troféus Conquistados</h2>
+            {achievements.length > 0 ? (
+              <div className="grid grid-cols-4 gap-3">
+                {achievements.map((achievement) => {
+                  const level = achievement.level || ((achievement.id % 3) + 1);
+                  const style = achievementStyles[level as keyof typeof achievementStyles] || achievementStyles[1];
+                  const Icon = style.Icon;
+                  
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`p-2 rounded-lg ${style.bgColor} flex items-center justify-center`}
+                    >
+                      <Icon className={`w-6 h-6 ${style.textColor}`} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-2">Nenhum troféu conquistado ainda.</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
