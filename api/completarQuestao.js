@@ -1,4 +1,3 @@
-// /api/completarQuestao.js
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
