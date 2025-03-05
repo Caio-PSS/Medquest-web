@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { RateLimiterMemory } = require("rate-limiter-flexible");
 
-// Configura os limitadores
+// Configura os limitadores de requisição
 const rateLimiterMinute = new RateLimiterMemory({ points: 30, duration: 60 });
 const rateLimiterDay = new RateLimiterMemory({ points: 1500, duration: 86400 });
 
@@ -34,23 +34,25 @@ export default async function handler(req, res) {
   
   const { enunciado, alternativa_a, alternativa_b, alternativa_c, alternativa_d, resposta, explicacao } = req.body;
   
-  // Função para identificar se o texto está incompleto (ex.: termina com "..." ou com menos de 50 caracteres)
-  const isIncomplete = (text) => {
-    if (!text) return false;
-    const trimmed = text.trim();
-    return trimmed.endsWith("...") || trimmed.length < 50;
-  };
+  // Nova engenharia de prompt:
+  // Em vez de usar uma função local para determinar se o texto está incompleto,
+  // enviaremos todos os campos (quando disponíveis) ao Gemini, que julgará se o campo
+  // está truncado ou precisa de complementação.
+  let prompt = 
+`Você é um editor de textos e especialista em questões de múltipla escolha. Analise os seguintes campos da questão e verifique se o texto está incompleto ou foi cortado abruptamente. Para cada campo, se o texto parecer completo, retorne-o inalterado; se parecer truncado ou incompleto, complete apenas o final do texto, mantendo o mesmo estilo, contexto e coerência. Responda utilizando o seguinte formato, em que cada linha representa um campo:
+Campo: texto completo
 
-  let prompt = "Complete os seguintes campos da questão se estiverem incompletos:\n";
-  if (isIncomplete(enunciado)) prompt += `Enunciado: ${enunciado}\n`;
-  if (isIncomplete(alternativa_a)) prompt += `Alternativa A: ${alternativa_a}\n`;
-  if (isIncomplete(alternativa_b)) prompt += `Alternativa B: ${alternativa_b}\n`;
-  if (alternativa_c && isIncomplete(alternativa_c)) prompt += `Alternativa C: ${alternativa_c}\n`;
-  if (alternativa_d && isIncomplete(alternativa_d)) prompt += `Alternativa D: ${alternativa_d}\n`;
-  prompt += `Resposta correta: ${resposta}\n`;
-  prompt += `Explicação: ${explicacao}\n`;
-  prompt += "Complete apenas o final dos textos que parecem estar cortados.";
+Dados da questão:
+Enunciado: ${enunciado}
+Alternativa A: ${alternativa_a}
+Alternativa B: ${alternativa_b}
+${alternativa_c ? `Alternativa C: ${alternativa_c}` : ""}
+${alternativa_d ? `Alternativa D: ${alternativa_d}` : ""}
+Resposta correta: ${resposta}
+Explicação: ${explicacao}
 
+Atenção: Complete somente os campos que estiverem truncados ou incompletos, deixando os que estiverem completos inalterados.`;
+  
   try {
     // Inicia uma sessão de chat com o Gemini e envia o prompt
     const chatSession = model.startChat({
@@ -60,9 +62,9 @@ export default async function handler(req, res) {
     const result = await chatSession.sendMessage(prompt);
     const completedText = result.response.text();
 
-    // Supomos que o retorno seja um texto formatado linha a linha, por exemplo:
+    // Supomos que o retorno seja um texto com cada campo em uma linha, no formato:
     // "Enunciado: texto completo\nAlternativa A: texto completo\n..."
-    // A seguir, fazemos um parsing simples para extrair os campos.
+    // Realizamos um parsing simples para extrair os campos:
     const lines = completedText.split("\n");
     const resultObj = {};
     lines.forEach(line => {
