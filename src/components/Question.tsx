@@ -295,22 +295,25 @@ export default function Question({
       </div>
 
       {!showFeedback && (
-        <div className="flex gap-4 mt-8">
-          <button
-            onClick={handleConfirmAnswer}
-            disabled={!selected}
-            className={`mt-8 w-full py-4 rounded-xl text-lg font-medium transition-all duration-200
-                      flex items-center justify-center gap-2
-                      ${selected ? 'bg-green-600 text-white hover:bg-green-500 shadow-lg' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
-          >
-            Confirmar Resposta
-          </button>
+        <div className="flex gap-4 mt-8 justify-between">
           <button
             onClick={onComplete}
             className="mt-8 border border-red-500/50 text-red-300 py-3 px-4 rounded-lg hover:border-red-400 hover:text-red-200 transition-all duration-200 flex items-center gap-2 group"
           >
             <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-sm">Questão Incompleta</span>
+          </button>
+
+          <button
+            onClick={handleConfirmAnswer}
+            disabled={!selected}
+            className={`flex-1 py-4 rounded-xl text-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+              selected 
+                ? 'bg-green-600 text-white hover:bg-green-500 shadow-lg' 
+                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            Confirmar Resposta
           </button>
         </div>
       )}
