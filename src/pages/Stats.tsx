@@ -5,6 +5,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import ReactMarkdown from 'react-markdown';
 import { Cpu } from 'lucide-react';
+import KalmanFilter from 'kalmanjs';
 
 type TimeRange = 'day' | 'week' | 'month' | 'semestre' | 'year' | 'custom';
 
@@ -68,18 +69,6 @@ const Stats = () => {
   const [studyPlanLoading, setStudyPlanLoading] = useState(false);
   const [studyPlanError, setStudyPlanError] = useState<string | null>(null);
 
-  // Função para calcular média móvel (janela de 3 pontos)
-  const calculateMovingAverage = (data: number[], windowSize: number): number[] => {
-    const averages: number[] = [];
-    for (let i = 0; i < data.length; i++) {
-      const start = Math.max(0, i - windowSize + 1);
-      const window = data.slice(start, i + 1);
-      const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
-      averages.push(parseFloat(avg.toFixed(2)));
-    }
-    return averages;
-  };
-
   const fetchData = useCallback(async (filters: StatsFilters) => {
     try {
       setLoading(true);
@@ -126,6 +115,11 @@ const Stats = () => {
       setLoading(false);
     }
   }, [authToken]);
+
+  function applyKalmanFilter(data: number[]): number[] {
+    const kf = new KalmanFilter({ R: 0.01, Q: 3 }); // Ajuste conforme necessário
+    return data.map((value: number) => kf.filter(value));
+  }
 
   useEffect(() => {
     if (!authToken) return;
@@ -434,7 +428,7 @@ const Stats = () => {
                     },
                     {
                       label: 'Tendência',
-                      data: calculateMovingAverage(timelinePercentageData, 3),
+                      data: applyKalmanFilter(timelinePercentageData),
                       borderColor: '#3B82F6',
                       borderDash: [5, 5],
                       tension: 0.1,
