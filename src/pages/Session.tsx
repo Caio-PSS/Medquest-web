@@ -435,6 +435,45 @@ const Session = () => {
   const questionAudioPlaying = currentAudio && currentAudioType === "question" && !currentAudio.paused;
   const explanationAudioPlaying = currentAudio && currentAudioType === "explanation" && !currentAudio.paused;
 
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleCompleteQuestion = async () => {
+    const pauseStart = Date.now();
+    setIsCompleting(true);
+  
+    const currentQ = questions[currentQuestion];
+    try {
+      const response = await fetch('/api/completarQuestao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enunciado: currentQ.enunciado,
+          alternativa_a: currentQ.alternativa_a,
+          alternativa_b: currentQ.alternativa_b,
+          alternativa_c: currentQ.alternativa_c,
+          alternativa_d: currentQ.alternativa_d,
+          resposta: currentQ.resposta,
+          explicacao: currentQ.explicacao,
+        }),
+      });
+      if (!response.ok) throw new Error("Erro ao completar a questão");
+      const correctedData = await response.json();
+  
+      // Mescla os campos retornados com a questão atual
+      const updatedQuestion = { ...currentQ, ...correctedData };
+      const updatedQuestions = [...questions];
+      updatedQuestions[currentQuestion] = updatedQuestion;
+      setQuestions(updatedQuestions);
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao completar a questão.");
+    } finally {
+      const pauseDuration = Date.now() - pauseStart;
+      setQuestionStartTime(prev => prev + pauseDuration);
+      setIsCompleting(false);
+    }
+  };
+
   return (
     <div className="p-4 min-h-screen bg-gray-950">
       {questions.length === 0 ? (
@@ -580,6 +619,7 @@ const Session = () => {
                   data={questions[currentQuestion]}
                   onConfirm={handleAnswer}
                   onNext={handleNextQuestion}
+                  onComplete={handleCompleteQuestion}
                   autoReadEnabled={autoReadEnabled}
                   readText={readText}
                   isReading={isReading}
@@ -594,6 +634,12 @@ const Session = () => {
                 />
               )
             )}
+            {isCompleting && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <Bars height="60" width="60" color="#ffffff" />
+              </div>
+            )}
+
           </div>
         </div>
       )}

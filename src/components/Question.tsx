@@ -22,6 +22,7 @@ interface QuestionProps {
   data: QuestionType;
   onConfirm: (answer: string, isCorrect: boolean) => void;
   onNext: () => void;
+  onComplete: () => void;
   autoReadEnabled: boolean;
   readText: (text: string, type: "question" | "explanation", preload?: boolean) => void;
   isReading: boolean;
@@ -35,10 +36,12 @@ interface QuestionProps {
   onExplanationDisplayed?: () => void;
 }
 
+
 export default function Question({
   data,
   onConfirm,
   onNext,
+  onComplete,
   autoReadEnabled,
   readText,
   isReading,
@@ -292,18 +295,25 @@ export default function Question({
       </div>
 
       {!showFeedback && (
-        <button
-          onClick={handleConfirmAnswer}
-          disabled={!selected}
-          className={`
-            mt-8 w-full py-4 rounded-xl text-lg font-medium transition-all duration-200
-            flex items-center justify-center gap-2
-            ${selected ? 'bg-green-600 text-white hover:bg-green-500 shadow-lg' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}
-          `}
-        >
-          Confirmar Resposta
-        </button>
+        <div className="flex gap-4 mt-8">
+          <button
+            onClick={handleConfirmAnswer}
+            disabled={!selected}
+            className={`mt-8 w-full py-4 rounded-xl text-lg font-medium transition-all duration-200
+                      flex items-center justify-center gap-2
+                      ${selected ? 'bg-green-600 text-white hover:bg-green-500 shadow-lg' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+          >
+            Confirmar Resposta
+          </button>
+          <button
+            onClick={onComplete}
+            className="mt-8 bg-red-600 text-white py-4 px-6 rounded-xl hover:bg-red-500 transition-all duration-200 shadow-lg"
+          >
+            Incompleto
+          </button>
+        </div>
       )}
+
 
       {showFeedback && (
         <div className="mt-8 p-6 rounded-xl bg-gray-800 border border-gray-700 shadow-md">
