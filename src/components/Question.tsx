@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { 
   CheckCircle, X, AlertTriangle, Lightbulb, 
-  PlayCircle, PauseCircle, RotateCcw 
+  PlayCircle, PauseCircle, RotateCcw, AlertCircle 
 } from 'lucide-react';
 
 interface QuestionType {
@@ -307,9 +307,10 @@ export default function Question({
           </button>
           <button
             onClick={onComplete}
-            className="mt-8 bg-red-600 text-white py-4 px-6 rounded-xl hover:bg-red-500 transition-all duration-200 shadow-lg"
+            className="mt-8 border border-red-500/50 text-red-300 py-3 px-4 rounded-lg hover:border-red-400 hover:text-red-200 transition-all duration-200 flex items-center gap-2 group"
           >
-            Incompleto
+            <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="text-sm">Questão Incompleta</span>
           </button>
         </div>
       )}

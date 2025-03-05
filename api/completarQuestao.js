@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   // enunciado, alternativa_a, alternativa_b, alternativa_c, alternativa_d.
   // Apenas os campos que parecerem truncados ou incompletos devem ser completados.
   const prompt = `
-Você é um editor de textos e especialista em questões de múltipla escolha. Sua tarefa é analisar os campos de uma questão e determinar se algum deles está truncado ou incompleto. Para cada campo, se o texto estiver completo, retorne-o inalterado; se estiver incompleto, complete somente o final do texto, mantendo o mesmo estilo e coerência.
+Você é um editor de textos e especialista em questões de múltipla escolha de provas de residência médica. Sua tarefa é analisar os campos de uma questão e determinar se algum deles está truncado ou incompleto. Para cada campo, se o texto estiver completo, retorne-o inalterado; se estiver incompleto, complete somente o final do texto, mantendo o mesmo estilo e coerência.
 
 Por favor, analise os seguintes dados e retorne apenas um objeto JSON contendo as chaves "enunciado", "alternativa_a", "alternativa_b", "alternativa_c" e "alternativa_d". Os campos "Resposta correta" e "Explicação" servem apenas como contexto e não devem ser alterados.
 
