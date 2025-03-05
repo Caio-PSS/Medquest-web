@@ -298,7 +298,7 @@ export default function Question({
         <div className="flex gap-4 mt-8 justify-between">
           <button
             onClick={onComplete}
-            className="mt-8 border border-red-500/50 text-red-300 py-3 px-4 rounded-lg hover:border-red-400 hover:text-red-200 transition-all duration-200 flex items-center gap-2 group"
+            className="mt-8 border border-red-500/50 text-red-300 py-4 px-4 rounded-lg hover:border-red-400 hover:text-red-200 transition-all duration-200 flex items-center gap-2 group"
           >
             <AlertCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-sm">Questão Incompleta</span>
