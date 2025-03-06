@@ -121,19 +121,28 @@ const Stats = () => {
     return data.map((value: number) => kf.filter(value));
   }
 
-  function calculateLinearTrend(data: number[]): number[] {
-    const n = data.length;
-    if (n === 0) return [];
+  function calculateLinearTrend(
+    timelineData: { date: string }[],
+    data: number[]
+  ): number[] {
+    if (timelineData.length === 0 || timelineData.length !== data.length) return [];
   
-    const x = Array.from({ length: n }, (_, i) => i);
-    const y = data;
+    const base = new Date(timelineData[0].date).getTime();
+    const x = timelineData.map(d => {
+      const diff = new Date(d.date).getTime() - base;
+      return diff / (1000 * 60 * 60 * 24); // Dias desde a data base
+    });
   
+    const n = x.length;
     const sumX = x.reduce((sum, val) => sum + val, 0);
-    const sumY = y.reduce((sum, val) => sum + val, 0);
-    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
+    const sumY = data.reduce((sum, val) => sum + val, 0);
+    const sumXY = x.reduce((sum, val, i) => sum + val * data[i], 0);
     const sumXX = x.reduce((sum, val) => sum + val * val, 0);
   
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const denominator = n * sumXX - sumX * sumX;
+    if (denominator === 0) return new Array(n).fill(0); // Evita divisão por zero
+  
+    const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
   
     return x.map(val => slope * val + intercept);
@@ -454,7 +463,7 @@ const Stats = () => {
                     },
                     {
                       label: 'Tendência longo prazo',
-                      data: calculateLinearTrend(timelinePercentageData),
+                      data: calculateLinearTrend(timelineData, timelinePercentageData),
                       borderColor: '#FF5733',
                       borderDash: [10, 5],
                       tension: 0, 
