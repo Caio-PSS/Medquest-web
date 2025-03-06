@@ -121,6 +121,24 @@ const Stats = () => {
     return data.map((value: number) => kf.filter(value));
   }
 
+  function calculateLinearTrend(data: number[]): number[] {
+    const n = data.length;
+    if (n === 0) return [];
+  
+    const x = Array.from({ length: n }, (_, i) => i);
+    const y = data;
+  
+    const sumX = x.reduce((sum, val) => sum + val, 0);
+    const sumY = y.reduce((sum, val) => sum + val, 0);
+    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
+    const sumXX = x.reduce((sum, val) => sum + val * val, 0);
+  
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+  
+    return x.map(val => slope * val + intercept);
+  }
+
   useEffect(() => {
     if (!authToken) return;
     const filters: StatsFilters = {
@@ -427,17 +445,36 @@ const Stats = () => {
                       fill: false,
                     },
                     {
-                      label: 'Tendência',
+                      label: 'Tendência curto prazo',
                       data: applyKalmanFilter(timelinePercentageData),
                       borderColor: '#3B82F6',
                       borderDash: [5, 5],
                       tension: 0.1,
+                      fill: false,
+                    },
+                    {
+                      label: 'Tendência longo prazo',
+                      data: calculateLinearTrend(timelinePercentageData),
+                      borderColor: '#FF5733',
+                      borderDash: [10, 5],
+                      tension: 0, 
                       fill: false,
                     }
                   ]
                 }}
                 options={{
                   responsive: true,
+                  plugins: {
+                    legend: {
+                      display: true,
+                      position: 'top',
+                      labels: {
+                        font: {
+                          size: 14,
+                        },
+                      },
+                    },
+                  },
                   scales: {
                     x: {
                       type: 'time',
@@ -455,7 +492,6 @@ const Stats = () => {
               />
             </div>
           )}
-
           {activeTab === 'timeVsAccuracy' && timelineData.length > 0 && (
             <div className="bg-white p-6 rounded-xl shadow h-96">
               <ScatterChart
