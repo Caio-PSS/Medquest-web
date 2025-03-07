@@ -65,6 +65,15 @@ const Session = () => {
   // "Leitura auto" desativada inicialmente
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  const cyclePlaybackRate = () => {
+    const rates = [1, 1.25, 1.5, 2];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextIndex = (currentIndex + 1) % rates.length;
+    setPlaybackRate(rates[nextIndex]);
+  };  
+
   // Cache para evitar múltiplas requisições para o mesmo texto
   const audioCache = useRef<{ [key: string]: string }>({});
 
@@ -322,6 +331,8 @@ const Session = () => {
       const audio = new Audio(audioUrl);
       setCurrentAudio(audio);
       setCurrentAudioType(type);
+      audio.preservesPitch = true;
+      audio.playbackRate = playbackRate;
       audio.play();
       setAudioLoading(false);
       audio.onended = () => {
@@ -353,7 +364,7 @@ const Session = () => {
         setCurrentAudio(audio);
         setCurrentAudioType("question");
         audio.preservesPitch = true; // Garante que o pitch seja mantido
-        audio.playbackRate = 1.5;    // Aumenta a velocidade em 50%
+        audio.playbackRate = playbackRate;
         audio.play();
         audio.onended = () => {
           setIsReading(false);
@@ -385,7 +396,7 @@ const Session = () => {
       setCurrentAudio(audio);
       setCurrentAudioType("question");
       audio.preservesPitch = true; // Garante que o pitch seja mantido
-      audio.playbackRate = 1.5;    // Aumenta a velocidade em 50%
+      audio.playbackRate = playbackRate;    // Aumenta a velocidade em 50%
       audio.play();
       audio.onended = () => {
         setIsReading(false);
@@ -578,24 +589,30 @@ const Session = () => {
                 Questão {currentQuestion + 1} de {questions.length}
               </span>
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    // Se o autoRead estiver ativo, ao clicar novamente, pausa e desativa
-                    if (autoReadEnabled && currentAudio) {
-                      currentAudio.pause();
-                      setCurrentAudio(null);
-                    }
-                    setAutoReadEnabled(!autoReadEnabled);
-                  }}
-                  className={`p-2 rounded-full transition-colors ${
-                    autoReadEnabled
-                      ? 'bg-green-600 hover:bg-green-500 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                  }`}
-                  disabled={isReading}
-                >
-                  Leitura auto
-                </button>
+              <button
+                onClick={() => {
+                  if (autoReadEnabled && currentAudio) {
+                    currentAudio.pause();
+                    setCurrentAudio(null);
+                  }
+                  setAutoReadEnabled(!autoReadEnabled);
+                }}
+                className={`p-2 rounded-full transition-colors ${
+                  autoReadEnabled
+                    ? 'bg-green-600 hover:bg-green-500 text-white'
+                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                }`}
+                disabled={isReading}
+              >
+                Leitura auto
+              </button>
+              <button
+                onClick={cyclePlaybackRate}
+                className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                title="Alterar velocidade de reprodução"
+              >
+                {`x${playbackRate}`}
+              </button>
                 <div className="flex gap-4">
                   <div className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md">
                     <span className="font-semibold">Questão:</span>
