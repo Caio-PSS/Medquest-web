@@ -59,6 +59,11 @@ export default function Question({
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState<boolean | null>(null);
 
+  // States for video handling
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
+
   // Flags para evitar que o auto‑read seja disparado mais de uma vez por questão
   const autoQuestionReadTriggered = useRef(false);
   const autoExplanationReadTriggered = useRef(false);
@@ -157,6 +162,116 @@ export default function Question({
 
   const replayQuestionAudioHandler = () => {
     replayQuestionAudio();
+  };
+
+  const renderExplanationWithVideoLinks = (text: string) => {
+    if (!text) return null;
+    
+    // Regular expression to match "Video comentário: XXXXXX" with variations
+    const regex = /(V[íi]deo coment[áa]rio:?\s*)(\d+)/gi;
+    
+    // Split the text by regex matches
+    const parts = text.split(regex);
+    
+    if (parts.length <= 1) {
+      // No matches, return the original text
+      return <p className="ml-6">{text}</p>;
+    }
+    
+    // Process parts to create JSX elements
+    const elements: React.ReactNode[] = [];
+    
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 3 === 0) {
+        // Regular text part
+        if (parts[i]) {
+          elements.push(<span key={`text-${i}`}>{parts[i]}</span>);
+        }
+      } else if (i % 3 === 1) {
+        // The "Video comentário:" part
+        if (parts[i]) {
+          elements.push(<span key={`label-${i}`}>{parts[i]}</span>);
+        }
+      } else {
+        // The video ID part
+        const videoId = parts[i];
+        elements.push(
+          <button
+            key={`video-${i}`}
+            onClick={() => openVideoModal(videoId)}
+            className="text-blue-400 hover:text-blue-300 font-medium underline"
+          >
+            {videoId}
+          </button>
+        );
+      }
+    }
+    
+    return <p className="ml-6">{elements}</p>;
+  };
+  
+  const openVideoModal = (videoId: string) => {
+    setCurrentVideoId(videoId);
+    setVideoModalOpen(true);
+    setVideoLoading(true);
+  };
+  
+  const closeVideoModal = () => {
+    setVideoModalOpen(false);
+    setCurrentVideoId(null);
+  };
+
+  const VideoModal = () => {
+    if (!currentVideoId) return null;
+    
+    // Replace with your actual Backblaze B2 bucket URL
+    const backblazeUrl = process.env.NEXT_PUBLIC_BACKBLAZE_URL || "";
+    const videoUrl = `${backblazeUrl}/${currentVideoId}.mp4`;
+    
+    const handleVideoLoaded = () => {
+      setVideoLoading(false);
+    };
+    
+    return (
+      <div className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 flex justify-center items-center">
+        <div className="bg-gray-900 rounded-2xl p-4 md:p-8 shadow-2xl max-w-5xl max-h-screen overflow-auto relative">
+          <button
+            onClick={closeVideoModal}
+            className="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-2 transition-colors"
+            aria-label="Fechar Vídeo"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          
+          <div className="relative w-full" style={{ minWidth: '300px', minHeight: '200px' }}>
+            {videoLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </div>
+            )}
+            
+            <video 
+              controls 
+              autoPlay
+              className="w-full rounded-lg"
+              style={{ maxHeight: '80vh' }}
+              onLoadedData={handleVideoLoaded}
+              onError={handleVideoLoaded}
+            >
+              <source src={videoUrl} type="video/mp4" />
+              Seu navegador não suporta a reprodução de vídeos.
+            </video>
+          </div>
+          
+          <div className="text-center mt-4 text-gray-300">
+            <p>Vídeo Comentário: {currentVideoId}</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -378,7 +493,7 @@ export default function Question({
                   </button>
                 </div>
               </div>
-              <p className="ml-6">{data.explicacao}</p>
+              {renderExplanationWithVideoLinks(data.explicacao)}
             </div>
           )}
           <button
@@ -394,6 +509,7 @@ export default function Question({
           </button>
         </div>
       )}
+      {videoModalOpen && <VideoModal />}
     </div>
   );
 }
