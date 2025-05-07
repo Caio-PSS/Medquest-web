@@ -7,6 +7,7 @@ import { CheckCircle, Circle, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import { complementarQuestoes } from '../../api/complementarPDF';
 
 type QuestionType = {
   id: number;
@@ -36,6 +37,9 @@ const Session = () => {
   const { authToken, authUser } = useAuth();
   const navigate = useNavigate();
 
+  const [complementProgress, setComplementProgress] = useState(0);
+  const [isComplementing, setIsComplementing] = useState(false);  
+  
   const [categories, setCategories] = useState<Category[]>([]);
   const [questions, setQuestions] = useState<QuestionType[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -506,14 +510,27 @@ const Session = () => {
       if (!res.ok) throw new Error('Erro ao buscar questões para PDF');
       const questionsData = await res.json();
       
-      await generateQuestionsPDF(questionsData);
-      await generateAnswersPDF(questionsData);
+      // Nova parte: complementar questões incompletas
+      setIsComplementing(true);
+      setComplementProgress(0);
+      
+      const questoesComplementadas = await complementarQuestoes(
+        questionsData, 
+        (percentual: number) => setComplementProgress(percentual)
+      );
+      
+      setIsComplementing(false);
+      
+      // Usar as questões complementadas para gerar os PDFs
+      await generateQuestionsPDF(questoesComplementadas);
+      await generateAnswersPDF(questoesComplementadas);
       
     } catch (err) {
       console.error(err);
       alert('Erro ao gerar PDFs');
     } finally {
       setPdfLoading(false);
+      setIsComplementing(false);
     }
   };
   
@@ -534,6 +551,7 @@ const Session = () => {
              pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 15;
     
+    // Using index + 1 for sequential numbering
     for (let i = 0; i < questionsData.length; i++) {
       const q = questionsData[i];
       
@@ -542,9 +560,18 @@ const Session = () => {
         yPosition = 20;
       }
       
+      // Verificar se a questão foi complementada (contém a nota sobre imagem)
+      const foiComplementada = q.enunciado.includes("[NOTA: Esta questão");
+      
       pdf.setFontSize(14);
       pdf.setTextColor(0, 102, 204);
-      pdf.text(`Questão ${q.id} - ${q.categoria} - ${q.subtema}`, 15, yPosition);
+      
+      // Marcar questões complementadas
+      if (foiComplementada) {
+        pdf.text(`Questão ${i+1} - ${q.categoria} - ${q.subtema} [Complementada]`, 15, yPosition);
+      } else {
+        pdf.text(`Questão ${i+1} - ${q.categoria} - ${q.subtema}`, 15, yPosition);
+      }
       yPosition += 10;
       
       pdf.setFontSize(12);
@@ -645,7 +672,8 @@ const Session = () => {
     pdf.setTextColor(0, 102, 204);
     pdf.text('Gabarito', 15, 45);
     
-    const tableData = questionsData.map(q => [q.id, q.resposta]);
+    // Updated table data to use sequential numbering
+    const tableData = questionsData.map((q, index) => [index + 1, q.resposta]);
     
     autoTable(pdf, {
       startY: 50,
@@ -670,6 +698,7 @@ const Session = () => {
     let yPosition = 30;
     const pageWidth = pdf.internal.pageSize.getWidth();
     
+    // Using index + 1 for sequential numbering in explanations
     for (let i = 0; i < questionsData.length; i++) {
       const q = questionsData[i];
       
@@ -680,7 +709,8 @@ const Session = () => {
       
       pdf.setFontSize(12);
       pdf.setTextColor(0, 102, 204);
-      pdf.text(`Questão ${q.id} - Resposta: ${q.resposta}`, 15, yPosition);
+      // Using sequential number (i+1) instead of q.id
+      pdf.text(`Questão ${i+1} - Resposta: ${q.resposta}`, 15, yPosition);
       yPosition += 8;
       
       pdf.setFontSize(10);
@@ -794,23 +824,32 @@ const Session = () => {
             </div>
           </div>
           <div className="flex space-x-4 mt-8">
-            <button
-              onClick={generatePDFs}
-              disabled={isLoading || pdfLoading || selections.length === 0}
-              className="flex-1 bg-purple-600 text-white py-4 rounded-xl hover:bg-purple-500 disabled:opacity-50 transition-all duration-200 text-lg font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-            >
-              {pdfLoading ? (
-                <>
-                  <Bars height="24" width="24" color="#ffffff" />
-                  <span>Gerando PDFs...</span>
-                </>
-              ) : (
-                <>
-                  <FileText className="w-5 h-5" />
-                  <span>Gerar PDFs</span>
-                </>
-              )}
-            </button>
+          <button
+            onClick={generatePDFs}
+            disabled={isLoading || pdfLoading || selections.length === 0}
+            className="flex-1 bg-purple-600 text-white py-4 rounded-xl hover:bg-purple-500 disabled:opacity-50 transition-all duration-200 text-lg font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+          >
+            {pdfLoading ? (
+              <>
+                {isComplementing ? (
+                  <>
+                    <Bars height="24" width="24" color="#ffffff" />
+                    <span>Analisando questões... {complementProgress}%</span>
+                  </>
+                ) : (
+                  <>
+                    <Bars height="24" width="24" color="#ffffff" />
+                    <span>Gerando PDFs...</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <FileText className="w-5 h-5" />
+                <span>Gerar PDFs</span>
+              </>
+            )}
+          </button>
             
             <button
               onClick={loadQuestions}
