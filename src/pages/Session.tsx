@@ -7,7 +7,7 @@ import { CheckCircle, Circle, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
-import { complementarQuestoes } from '../../api/complementarPDF';
+import { complementarQuestoes } from '../pdf/complementarPDF';
 
 type QuestionType = {
   id: number;
