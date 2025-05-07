@@ -3,7 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import Question from '../components/Question';
 import { useNavigate } from 'react-router-dom';
 import { Bars } from 'react-loader-spinner';
-import { CheckCircle, Circle } from 'lucide-react';
+import { CheckCircle, Circle, FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 type QuestionType = {
   id: number;
@@ -62,7 +65,6 @@ const Session = () => {
     correctComments: [] as string[],
   });
 
-  // "Leitura auto" desativada inicialmente
   const [autoReadEnabled, setAutoReadEnabled] = useState(false);
 
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -74,7 +76,6 @@ const Session = () => {
     setPlaybackRate(rates[nextIndex]);
   };  
 
-  // Cache para evitar múltiplas requisições para o mesmo texto
   const audioCache = useRef<{ [key: string]: string }>({});
 
   useEffect(() => {
@@ -217,7 +218,6 @@ const Session = () => {
     }
   };
 
-  // Função para pré-carregar o áudio da próxima questão
   const preloadNextQuestionAudio = async () => {
     if (currentQuestion + 1 < questions.length) {
       const nextQ = questions[currentQuestion + 1];
@@ -264,7 +264,6 @@ const Session = () => {
     setCurrentAudioType(null);
   };
 
-  // Função de leitura com cache para evitar múltiplas requisições para o mesmo texto
   async function readText(
     text: string,
     type: "question" | "explanation",
@@ -336,7 +335,6 @@ const Session = () => {
       audio.play();
       setAudioLoading(false);
       audio.onended = () => {
-        // Não reinicia automaticamente; apenas finaliza a leitura
         setIsReading(false);
         setCurrentAudio(null);
         setCurrentAudioType(null);
@@ -350,7 +348,6 @@ const Session = () => {
     }
   }
 
-  // Ao clicar manualmente, se o áudio já estiver carregado, usa-o sem nova requisição
   const toggleQuestionAudio = () => {
     if (currentAudio && currentAudioType === "question") {
       if (!currentAudio.paused) {
@@ -363,7 +360,7 @@ const Session = () => {
         const audio = new Audio(questionAudioData);
         setCurrentAudio(audio);
         setCurrentAudioType("question");
-        audio.preservesPitch = true; // Garante que o pitch seja mantido
+        audio.preservesPitch = true;
         audio.playbackRate = playbackRate;
         audio.play();
         audio.onended = () => {
@@ -395,8 +392,8 @@ const Session = () => {
       const audio = new Audio(questionAudioData);
       setCurrentAudio(audio);
       setCurrentAudioType("question");
-      audio.preservesPitch = true; // Garante que o pitch seja mantido
-      audio.playbackRate = playbackRate;    // Aumenta a velocidade em 50%
+      audio.preservesPitch = true;
+      audio.playbackRate = playbackRate;
       audio.play();
       audio.onended = () => {
         setIsReading(false);
@@ -470,7 +467,6 @@ const Session = () => {
       if (!response.ok) throw new Error("Erro ao completar a questão");
       const correctedData = await response.json();
   
-      // Mescla os campos retornados com a questão atual
       const updatedQuestion = { ...currentQ, ...correctedData };
       const updatedQuestions = [...questions];
       updatedQuestions[currentQuestion] = updatedQuestion;
@@ -483,6 +479,237 @@ const Session = () => {
       setQuestionStartTime(prev => prev + pauseDuration);
       setIsCompleting(false);
     }
+  };
+
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const generatePDFs = async () => {
+    if (selections.length === 0) {
+      alert('Selecione pelo menos um subtema!');
+      return;
+    }
+    
+    setPdfLoading(true);
+    try {
+      const params = new URLSearchParams({
+        selections: JSON.stringify(selections),
+        numQuestions: numQuestions.toString(),
+        includeRepeats: includeRepeats.toString(),
+        userId: authUser?.id?.toString() || '',
+      });
+      
+      const res = await fetch(
+        `https://medquest-floral-log-224.fly.dev/api/questions?${params}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      
+      if (!res.ok) throw new Error('Erro ao buscar questões para PDF');
+      const questionsData = await res.json();
+      
+      await generateQuestionsPDF(questionsData);
+      await generateAnswersPDF(questionsData);
+      
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao gerar PDFs');
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+  
+  const generateQuestionsPDF = async (questionsData: QuestionType[]) => {
+    const pdf = new jsPDF();
+    let yPosition = 20;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    
+    pdf.setFontSize(18);
+    pdf.setTextColor(0, 51, 102);
+    pdf.text('MedQuest - Questões', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 15;
+    
+    const date = new Date();
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`Gerado em: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`, 
+             pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 15;
+    
+    for (let i = 0; i < questionsData.length; i++) {
+      const q = questionsData[i];
+      
+      if (yPosition > pdf.internal.pageSize.getHeight() - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      
+      pdf.setFontSize(14);
+      pdf.setTextColor(0, 102, 204);
+      pdf.text(`Questão ${q.id} - ${q.categoria} - ${q.subtema}`, 15, yPosition);
+      yPosition += 10;
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+      const enunciadoLines = pdf.splitTextToSize(q.enunciado, pageWidth - 30);
+      pdf.text(enunciadoLines, 15, yPosition);
+      yPosition += enunciadoLines.length * 7;
+      
+      if (q.image_url) {
+        try {
+          yPosition += 5;
+          
+          const img = new Image();
+          img.crossOrigin = "Anonymous";
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = `https://medquest-floral-log-224.fly.dev${q.image_url}.png`;
+          });
+          
+          const imgRatio = img.width / img.height;
+          const maxWidth = pageWidth - 30;
+          const maxHeight = 100;
+          let imgWidth = maxWidth;
+          let imgHeight = imgWidth / imgRatio;
+          
+          if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * imgRatio;
+          }
+          
+          if (yPosition + imgHeight > pdf.internal.pageSize.getHeight() - 20) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) { // Add this null check to fix the TypeScript error
+            ctx.drawImage(img, 0, 0);
+            const imgData = canvas.toDataURL('image/jpeg');
+            
+            pdf.addImage(imgData, 'JPEG', 15, yPosition, imgWidth, imgHeight);
+            yPosition += imgHeight + 10;
+          } else {
+            console.error("Could not get 2D context from canvas");
+          }
+        } catch (error) {
+          console.error("Error loading image:", error);
+        }
+      }
+      
+      const alternativas = [
+        `A) ${q.alternativa_a}`,
+        `B) ${q.alternativa_b}`
+      ];
+      
+      if (q.alternativa_c) alternativas.push(`C) ${q.alternativa_c}`);
+      if (q.alternativa_d) alternativas.push(`D) ${q.alternativa_d}`);
+      
+      pdf.setFontSize(11);
+      for (const alt of alternativas) {
+        if (yPosition > pdf.internal.pageSize.getHeight() - 30) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        const altLines = pdf.splitTextToSize(alt, pageWidth - 30);
+        pdf.text(altLines, 15, yPosition);
+        yPosition += altLines.length * 6 + 4;
+      }
+      
+      yPosition += 10;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(15, yPosition, pageWidth - 15, yPosition);
+      yPosition += 15;
+    }
+    
+    pdf.save('MedQuest-Questoes.pdf');
+  };
+  
+  const generateAnswersPDF = async (questionsData: QuestionType[]) => {
+    const pdf = new jsPDF();
+    
+    pdf.setFontSize(18);
+    pdf.setTextColor(0, 51, 102);
+    pdf.text('MedQuest - Gabarito e Comentários', pdf.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    
+    const date = new Date();
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`Gerado em: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`, 
+             pdf.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+    
+    pdf.setFontSize(14);
+    pdf.setTextColor(0, 102, 204);
+    pdf.text('Gabarito', 15, 45);
+    
+    const tableData = questionsData.map(q => [q.id, q.resposta]);
+    
+    autoTable(pdf, {
+      startY: 50,
+      head: [['Questão', 'Resposta']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [0, 102, 204],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      alternateRowStyles: {
+        fillColor: [240, 240, 240]
+      }
+    });
+    
+    pdf.addPage();
+    pdf.setFontSize(14);
+    pdf.setTextColor(0, 102, 204);
+    pdf.text('Comentários e Explicações', 15, 20);
+    
+    let yPosition = 30;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    
+    for (let i = 0; i < questionsData.length; i++) {
+      const q = questionsData[i];
+      
+      if (yPosition > pdf.internal.pageSize.getHeight() - 40) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 102, 204);
+      pdf.text(`Questão ${q.id} - Resposta: ${q.resposta}`, 15, yPosition);
+      yPosition += 8;
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`${q.categoria} - ${q.subtema}`, 15, yPosition);
+      yPosition += 8;
+      
+      if (q.explicacao) {
+        pdf.setFontSize(11);
+        pdf.setTextColor(0, 0, 0);
+        
+        const explicacao = q.explicacao.replace(/(V[íi]deo coment[áa]rio:?\s*\d+)/gi, '');
+        
+        const explicacaoLines = pdf.splitTextToSize(explicacao, pageWidth - 30);
+        pdf.text(explicacaoLines, 15, yPosition);
+        yPosition += explicacaoLines.length * 6 + 10;
+      } else {
+        pdf.setFontSize(11);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("(Sem explicação disponível)", 15, yPosition);
+        yPosition += 10;
+      }
+      
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(15, yPosition, pageWidth - 15, yPosition);
+      yPosition += 15;
+    }
+    
+    pdf.save('MedQuest-Gabarito.pdf');
   };
 
   return (
@@ -566,20 +793,40 @@ const Session = () => {
               })}
             </div>
           </div>
-          <button
-            onClick={loadQuestions}
-            disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-500 disabled:opacity-50 transition-all duration-200 text-lg font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <Bars height="24" width="24" color="#ffffff" />
-                <span>Carregando...</span>
-              </>
-            ) : (
-              'Iniciar Sessão'
-            )}
-          </button>
+          <div className="flex space-x-4 mt-8">
+            <button
+              onClick={generatePDFs}
+              disabled={isLoading || pdfLoading || selections.length === 0}
+              className="flex-1 bg-purple-600 text-white py-4 rounded-xl hover:bg-purple-500 disabled:opacity-50 transition-all duration-200 text-lg font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            >
+              {pdfLoading ? (
+                <>
+                  <Bars height="24" width="24" color="#ffffff" />
+                  <span>Gerando PDFs...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="w-5 h-5" />
+                  <span>Gerar PDFs</span>
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={loadQuestions}
+              disabled={isLoading || pdfLoading}
+              className="flex-1 bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-500 disabled:opacity-50 transition-all duration-200 text-lg font-medium shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <Bars height="24" width="24" color="#ffffff" />
+                  <span>Carregando...</span>
+                </>
+              ) : (
+                'Iniciar Sessão'
+              )}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="max-w-6xl mx-auto">
